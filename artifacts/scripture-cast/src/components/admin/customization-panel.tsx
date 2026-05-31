@@ -1,7 +1,6 @@
 import React, { useRef } from 'react';
 import { usePresentationStore } from '@/hooks/use-presentation-store';
 import { useUpdatePresentationState } from '@workspace/api-client-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
@@ -10,42 +9,57 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Upload, ImageIcon, X } from 'lucide-react';
+import type { Typography, Background, Transition } from '@workspace/api-client-react';
 
 export function CustomizationPanel() {
   const store = usePresentationStore();
   const { mutate: updateState } = useUpdatePresentationState();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUpdate = (updates: Record<string, unknown>) => {
-    store.setPresentationState(updates as Parameters<typeof store.setPresentationState>[0]);
-    if (store.active) {
-      updateState({
-        data: {
-          active: store.active,
-          cleared: store.cleared,
-          verse: store.verse,
-          typography: store.typography,
-          background: store.background,
-          transition: store.transition,
-          ...updates,
-        } as Parameters<typeof updateState>[0]['data']
-      });
-    }
+  /**
+   * Broadcast a style-only change (background / typography / transition) to the
+   * server regardless of whether the presentation is currently live.
+   *
+   * We read fresh state via getState() to avoid stale-closure issues — the React
+   * component snapshot may be one render behind when we call this synchronously
+   * after setPresentationState().
+   */
+  const broadcastStyle = (patch: { typography?: Typography; background?: Background; transition?: Transition }) => {
+    const s = usePresentationStore.getState();
+    updateState({
+      data: {
+        active: s.active,
+        cleared: s.cleared,
+        verse: s.verse,
+        typography: patch.typography ?? s.typography,
+        background: patch.background ?? s.background,
+        transition: patch.transition ?? s.transition,
+      },
+    });
   };
 
   const updateTypography = (key: string, value: unknown) => {
-    handleUpdate({ typography: { ...store.typography, [key]: value } });
+    const fresh = usePresentationStore.getState();
+    const newTypo = { ...fresh.typography, [key]: value } as Typography;
+    fresh.setPresentationState({ typography: newTypo });
+    broadcastStyle({ typography: newTypo });
   };
 
   const updateBackground = (key: string, value: unknown) => {
-    handleUpdate({ background: { ...store.background, [key]: value } });
+    const fresh = usePresentationStore.getState();
+    const newBg = { ...fresh.background, [key]: value } as Background;
+    fresh.setPresentationState({ background: newBg });
+    broadcastStyle({ background: newBg });
   };
 
   const updateTransition = (key: string, value: unknown) => {
-    handleUpdate({ transition: { ...store.transition, [key]: value } });
+    const fresh = usePresentationStore.getState();
+    const newTrans = { ...fresh.transition, [key]: value } as Transition;
+    fresh.setPresentationState({ transition: newTrans });
+    broadcastStyle({ transition: newTrans });
   };
 
-  // Image upload — compress to max 1920×1080 JPEG to stay within localStorage limits
+  // Image upload — compress to max 1920×1080 JPEG 85% to stay within localStorage limits
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -68,7 +82,6 @@ export function CustomizationPanel() {
       URL.revokeObjectURL(objectUrl);
       updateBackground('imageUrl', dataUrl);
 
-      // Reset file input so the same file can be re-selected
       if (fileInputRef.current) fileInputRef.current.value = '';
     };
     img.src = objectUrl;
@@ -99,9 +112,7 @@ export function CustomizationPanel() {
                   value={store.typography?.fontFamily}
                   onValueChange={(v) => updateTypography('fontFamily', v)}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Noto Sans Telugu">Noto Sans Telugu</SelectItem>
                     <SelectItem value="Inter">Inter</SelectItem>
@@ -305,7 +316,6 @@ export function CustomizationPanel() {
                 <div className="space-y-3">
                   <Label>Background Image</Label>
 
-                  {/* Upload button */}
                   <div>
                     <input
                       ref={fileInputRef}
@@ -324,11 +334,10 @@ export function CustomizationPanel() {
                       {store.background?.imageUrl ? 'Replace Image' : 'Upload Image'}
                     </Button>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Supports JPG, PNG, WEBP · Max displayed at 1920×1080
+                      Supports JPG, PNG, WEBP · Resized to 1920×1080
                     </p>
                   </div>
 
-                  {/* Thumbnail preview */}
                   {store.background?.imageUrl ? (
                     <div className="relative rounded-md overflow-hidden border border-border bg-muted/30">
                       <img
@@ -344,14 +353,15 @@ export function CustomizationPanel() {
                         <X className="h-3.5 w-3.5 text-white" />
                       </button>
                       <div className="absolute bottom-0 inset-x-0 bg-black/50 px-2 py-1">
-                        <p className="text-xs text-white/80 truncate flex items-center gap-1">
+                        <p className="text-xs text-white/80 flex items-center gap-1">
                           <ImageIcon className="h-3 w-3 flex-shrink-0" />
                           Image applied
                         </p>
                       </div>
                     </div>
                   ) : (
-                    <div className="rounded-md border border-dashed border-border bg-muted/20 aspect-video flex flex-col items-center justify-center gap-2 text-muted-foreground cursor-pointer hover:bg-muted/30 transition-colors"
+                    <div
+                      className="rounded-md border border-dashed border-border bg-muted/20 aspect-video flex flex-col items-center justify-center gap-2 text-muted-foreground cursor-pointer hover:bg-muted/30 transition-colors"
                       onClick={() => fileInputRef.current?.click()}
                     >
                       <ImageIcon className="h-8 w-8 opacity-40" />
