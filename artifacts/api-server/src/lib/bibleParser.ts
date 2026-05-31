@@ -42,6 +42,76 @@ const JSON_DIR = path.resolve(process.cwd(), "../../data/bible/jsonFormat/json")
  * Load and parse the Telugu Bible dataset.
  * Format detected: { "TeluguBookName": { "chapterNum": { "verseNum": "text" } } }
  */
+// Canonical biblical order (66 books, Genesis→Revelation)
+const CANONICAL_ORDER: Record<string, number> = {
+  'ఆదికాండము': 1,            // Genesis
+  'నిర్గమకాండము': 2,          // Exodus
+  'లేవీయకాండము': 3,           // Leviticus
+  'సంఖ్యాకాండము': 4,          // Numbers
+  'ద్వితియోపదేశకాండము': 5,    // Deuteronomy
+  'యెహోషువ': 6,               // Joshua
+  'న్యాయాధిపతులు': 7,         // Judges
+  'రూతు': 8,                  // Ruth
+  '1సమూయేలు': 9,             // 1 Samuel
+  '2సమూయేలు': 10,            // 2 Samuel
+  '1రాజులు': 11,              // 1 Kings
+  '2రాజులు': 12,              // 2 Kings
+  '1దినవృత్తాంతములు': 13,    // 1 Chronicles
+  '2దినవృత్తాంతములు': 14,    // 2 Chronicles
+  'ఎజ్రా': 15,                // Ezra
+  'నెహెమ్యా': 16,             // Nehemiah
+  'ఎస్తేరు': 17,              // Esther
+  'యోబు': 18,                 // Job
+  'కీర్తనలు': 19,             // Psalms
+  'సామెతలు': 20,              // Proverbs
+  'ప్రసంగి': 21,              // Ecclesiastes
+  'పరమగీతము': 22,             // Song of Songs
+  'యెషయా': 23,               // Isaiah
+  'యిర్మియా': 24,             // Jeremiah
+  'విలాపవాక్యములు': 25,       // Lamentations
+  'యెహేజ్కేలు': 26,           // Ezekiel
+  'దానియేలు': 27,             // Daniel
+  'హోషేయా': 28,               // Hosea
+  'యోవేలు': 29,               // Joel
+  'ఆమోసు': 30,                // Amos
+  'ఓబద్యా': 31,               // Obadiah
+  'యోనా': 32,                 // Jonah
+  'మీకా': 33,                 // Micah
+  'నహూము': 34,                // Nahum
+  'హబక్కూకు': 35,             // Habakkuk
+  'జెఫన్యా': 36,              // Zephaniah
+  'హగ్గయి': 37,               // Haggai
+  'జెకర్యా': 38,              // Zechariah
+  'మలాకీ': 39,                // Malachi
+  'మత్తయి': 40,               // Matthew
+  'మార్కు': 41,               // Mark
+  'లూకా': 42,                 // Luke
+  'యోహాను': 43,               // John
+  'అపో.కార్యములు': 44,        // Acts
+  'రోమీయులకు': 45,            // Romans
+  '1కోరింథీయులకు': 46,        // 1 Corinthians
+  '2కోరింథీయులకు': 47,        // 2 Corinthians
+  'గలతియులకు': 48,            // Galatians
+  'ఎఫెసీయులకు': 49,           // Ephesians
+  'ఫిలిప్పీయులకు': 50,        // Philippians
+  'కొలస్సీయులకు': 51,         // Colossians
+  '1థెస్సలొనికయులకు': 52,    // 1 Thessalonians
+  '2థెస్సలొనికయులకు': 53,    // 2 Thessalonians
+  '1తిమోతికి': 54,            // 1 Timothy
+  '2తిమోతికి': 55,            // 2 Timothy
+  'తీతుకు': 56,               // Titus
+  'ఫిలేమోనుకు': 57,           // Philemon
+  'హెబ్రీయులకు': 58,          // Hebrews
+  'యాకోబు': 59,               // James
+  '1పేతురు': 60,              // 1 Peter
+  '2పేతురు': 61,              // 2 Peter
+  '1యోహాను': 62,              // 1 John
+  '2యోహాను': 63,              // 2 John
+  '3యోహాను': 64,              // 3 John
+  'యూదా': 65,                 // Jude
+  'ప్రకటన గ్రంథం': 66,        // Revelation
+};
+
 export async function loadBibleData(): Promise<void> {
   if (bibleIndex) return;
 
@@ -107,8 +177,13 @@ export async function loadBibleData(): Promise<void> {
     }
   }
 
-  // Sort books by canonical Telugu Bible order using the English abbrev directory as a guide
-  // (books are already in order from how Kaggle stored them; keep file sort order)
+  // Sort books by canonical biblical order (Genesis → Revelation)
+  books.sort((a, b) => {
+    const posA = CANONICAL_ORDER[a.id] ?? 999;
+    const posB = CANONICAL_ORDER[b.id] ?? 999;
+    return posA - posB;
+  });
+
   bibleIndex = { books, data };
   logger.info({ bookCount: books.length }, "Telugu Bible dataset loaded successfully");
 }
