@@ -3,13 +3,18 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: ScriptureCast API — Telugu Bible presentation platform
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: bible
+    description: Bible navigation and lookup
+  - name: presentation
+    description: Presentation state management
+
 paths:
   /healthz:
     get:
@@ -24,6 +29,184 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /bible/books:
+    get:
+      operationId: listBooks
+      tags: [bible]
+      summary: List all Bible books
+      description: Returns all available books from the Telugu Bible dataset
+      responses:
+        "200":
+          description: List of books
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Book"
+
+  /bible/books/{bookId}/chapters:
+    get:
+      operationId: listChapters
+      tags: [bible]
+      summary: List chapters for a book
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of chapters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Chapter"
+        "404":
+          description: Book not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bible/books/{bookId}/chapters/{chapterNum}/verses:
+    get:
+      operationId: listVerses
+      tags: [bible]
+      summary: List verses for a chapter
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: chapterNum
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of verses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Verse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bible/books/{bookId}/chapters/{chapterNum}/verses/{verseNum}:
+    get:
+      operationId: getVerse
+      tags: [bible]
+      summary: Get a single verse
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: chapterNum
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: verseNum
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: The verse
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerseDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bible/search:
+    get:
+      operationId: searchBible
+      tags: [bible]
+      summary: Search Bible by reference or text
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search query (e.g. "John 3:16" or "యోహాను 3:16")
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResult"
+
+  /presentation/state:
+    get:
+      operationId: getPresentationState
+      tags: [presentation]
+      summary: Get current presentation state
+      description: Returns the live presentation state being shown on the display screen
+      responses:
+        "200":
+          description: Current state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresentationState"
+
+    post:
+      operationId: updatePresentationState
+      tags: [presentation]
+      summary: Update presentation state
+      description: Updates the live presentation state and broadcasts via Socket.IO
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PresentationStateInput"
+      responses:
+        "200":
+          description: Updated state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresentationState"
+
+  /presentation/clear:
+    post:
+      operationId: clearPresentation
+      tags: [presentation]
+      summary: Clear the display screen
+      description: Broadcasts a clear event to all display screens
+      responses:
+        "200":
+          description: Cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClearResult"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +217,207 @@ components:
       required:
         - status
 
+    Book:
+      type: object
+      required: [id, name, chapters]
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the book
+        name:
+          type: string
+          description: Telugu book name
+        chapters:
+          type: integer
+          description: Total number of chapters
+
+    Chapter:
+      type: object
+      required: [number, verses]
+      properties:
+        number:
+          type: integer
+        verses:
+          type: integer
+          description: Total number of verses in this chapter
+
+    Verse:
+      type: object
+      required: [number, text]
+      properties:
+        number:
+          type: integer
+        text:
+          type: string
+          description: Telugu verse text
+
+    VerseDetail:
+      type: object
+      required: [bookId, bookName, chapter, verse, text, reference]
+      properties:
+        bookId:
+          type: string
+        bookName:
+          type: string
+        chapter:
+          type: integer
+        verse:
+          type: integer
+        text:
+          type: string
+        reference:
+          type: string
+          description: Formatted reference string e.g. "యోహాను 3:16"
+
+    SearchResult:
+      type: object
+      required: [query, result]
+      properties:
+        query:
+          type: string
+        result:
+          type: ["object", "null"]
+          description: The matched verse detail, null if not found
+          properties:
+            bookId:
+              type: string
+            bookName:
+              type: string
+            chapter:
+              type: integer
+            verse:
+              type: integer
+            text:
+              type: string
+            reference:
+              type: string
+
+    PresentationState:
+      type: object
+      required: [active, cleared]
+      properties:
+        active:
+          type: boolean
+        cleared:
+          type: boolean
+        verse:
+          type: ["object", "null"]
+          properties:
+            bookId:
+              type: string
+            bookName:
+              type: string
+            chapter:
+              type: integer
+            verse:
+              type: integer
+            text:
+              type: string
+            reference:
+              type: string
+        typography:
+          $ref: "#/components/schemas/Typography"
+        background:
+          $ref: "#/components/schemas/Background"
+        transition:
+          $ref: "#/components/schemas/Transition"
+
+    PresentationStateInput:
+      type: object
+      properties:
+        active:
+          type: boolean
+        cleared:
+          type: boolean
+        verse:
+          type: ["object", "null"]
+          properties:
+            bookId:
+              type: string
+            bookName:
+              type: string
+            chapter:
+              type: integer
+            verse:
+              type: integer
+            text:
+              type: string
+            reference:
+              type: string
+        typography:
+          $ref: "#/components/schemas/Typography"
+        background:
+          $ref: "#/components/schemas/Background"
+        transition:
+          $ref: "#/components/schemas/Transition"
+
+    Typography:
+      type: object
+      properties:
+        fontFamily:
+          type: string
+          description: Font family name
+        fontSize:
+          type: integer
+          description: Font size in px
+        fontWeight:
+          type: string
+          enum: [light, regular, medium, bold]
+        textAlign:
+          type: string
+          enum: [left, center, right]
+        textColor:
+          type: string
+          description: CSS color value
+        lineHeight:
+          type: number
+          description: Line height multiplier
+        shadow:
+          type: boolean
+        outline:
+          type: boolean
+        outlineWidth:
+          type: integer
+        showReference:
+          type: boolean
+
+    Background:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [solid, gradient, image]
+        color:
+          type: string
+        gradientStart:
+          type: string
+        gradientEnd:
+          type: string
+        gradientDirection:
+          type: string
+        imageUrl:
+          type: ["string", "null"]
+
+    Transition:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [fade, slide, crossfade]
+        duration:
+          type: integer
+          description: Duration in milliseconds
+
+    ClearResult:
+      type: object
+      required: [cleared]
+      properties:
+        cleared:
+          type: boolean
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string

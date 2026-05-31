@@ -1,5 +1,8 @@
+import http from "http";
 import app from "./app";
 import { logger } from "./lib/logger";
+import { initSocketIO } from "./lib/socketManager";
+import { loadBibleData } from "./lib/bibleParser";
 
 const rawPort = process.env["PORT"];
 
@@ -15,11 +18,16 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
+const httpServer = http.createServer(app);
 
+// Attach Socket.IO to the HTTP server
+initSocketIO(httpServer);
+
+// Pre-load Bible data
+loadBibleData().catch((err) => {
+  logger.error({ err }, "Failed to pre-load Bible data");
+});
+
+httpServer.listen(port, () => {
   logger.info({ port }, "Server listening");
 });
