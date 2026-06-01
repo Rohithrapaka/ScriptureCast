@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: scripture-cast
+    runtime: node
+    # Build: install deps, build the Vite frontend, then bundle the Express server
+    buildCommand: >-
+      npm install -g pnpm &&
+      pnpm install --frozen-lockfile &&
+      BASE_PATH=/ NODE_ENV=production pnpm --filter @workspace/scripture-cast run build &&
+      pnpm --filter @workspace/api-server run build
+    # Start: run the Express server from the repo root so process.cwd() = repo root
+    startCommand: node --enable-source-maps artifacts/api-server/dist/index.mjs
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: NODE_ENV
+        value: production
+    # Render free tier: services spin down after 15 min inactivity.
+    # For active church use this is fine — the service stays up during services.

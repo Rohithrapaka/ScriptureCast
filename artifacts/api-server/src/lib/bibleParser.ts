@@ -34,9 +34,18 @@ interface BibleIndex {
 
 let bibleIndex: BibleIndex | null = null;
 
-// Primary data source: JSON files
-// The api-server cwd is artifacts/api-server/; data lives at workspace root
-const JSON_DIR = path.resolve(process.cwd(), "../../data/bible/jsonFormat/json");
+// Primary data source: JSON files.
+// The data directory lives at the repo root regardless of environment, but
+// process.cwd() differs:
+//   - Dev (pnpm --filter):  pnpm sets cwd to the package dir (artifacts/api-server)
+//   - Production (Render):  node is started from the repo root
+// We probe both candidate paths and use whichever exists.
+const DATA_SUBPATH = "data/bible/jsonFormat/json";
+const candidatePaths = [
+  path.resolve(process.cwd(), DATA_SUBPATH),          // production: cwd = repo root
+  path.resolve(process.cwd(), "../../", DATA_SUBPATH), // dev: cwd = artifacts/api-server
+];
+const JSON_DIR = candidatePaths.find(fs.existsSync) ?? candidatePaths[0];
 
 /**
  * Load and parse the Telugu Bible dataset.
