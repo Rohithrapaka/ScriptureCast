@@ -8,7 +8,7 @@ export const defaultTypography: Typography = {
   fontWeight: 'bold',
   textAlign: 'center',
   textColor: '#ffffff',
-  lineHeight: 1.5,
+  lineHeight: 1.4,
   shadow: true,
   outline: false,
   outlineWidth: 2,
@@ -34,6 +34,16 @@ interface PresentationStore extends PresentationState {
   clearPresentation: () => void;
 }
 
+/**
+ * Shared presentation store.
+ *
+ * Persistence is intentionally disabled by default (skipHydration: true).
+ * Only the Admin page rehydrates from localStorage by calling
+ * `usePresentationStore.persist.rehydrate()` on mount.
+ *
+ * This prevents the Display page from reading or writing the admin's saved
+ * settings — the Display gets all its state purely from Socket.IO events.
+ */
 export const usePresentationStore = create<PresentationStore>()(
   persist(
     (set) => ({
@@ -47,7 +57,10 @@ export const usePresentationStore = create<PresentationStore>()(
       clearPresentation: () => set({ cleared: true, active: false }),
     }),
     {
-      name: 'scripture-cast-presentation-storage',
+      name: 'scripture-cast-admin-settings',
+      // Don't auto-hydrate — the admin page explicitly calls rehydrate() on
+      // mount so the display page never touches the admin's persisted state.
+      skipHydration: true,
       partialize: (state) => ({
         typography: state.typography,
         background: state.background,
