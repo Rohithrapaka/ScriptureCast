@@ -78,8 +78,8 @@ export function DisplayPreview() {
     if (transition?.type === 'slide') {
       return {
         initial: { opacity: 0, y: 60 },
-        animate: { opacity: 1, y: 0, transition: { duration: dur, ease: 'easeOut' } },
-        exit: { opacity: 0, y: -40, transition: { duration: dur * 0.7, ease: 'easeIn' } }
+        animate: { opacity: 1, y: 0, transition: { duration: dur, ease: 'easeOut' as const } },
+        exit: { opacity: 0, y: -40, transition: { duration: dur * 0.7, ease: 'easeIn' as const } }
       };
     }
     return {
