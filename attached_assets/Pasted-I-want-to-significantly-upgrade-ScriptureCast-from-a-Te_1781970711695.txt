@@ -1,0 +1,326 @@
+I want to significantly upgrade ScriptureCast from a Telugu-only presentation system into a bilingual scripture presentation platform.
+
+Before making any changes, analyze both Bible datasets and propose the data model that will support Telugu, English, and future translations.
+
+Do not hardcode assumptions. Inspect the actual datasets first.
+
+---
+
+# New Feature: Multi-Language Bible Support
+
+The application currently supports only Telugu.
+
+Add support for:
+
+* Telugu (existing dataset)
+* English KJV (new dataset)
+
+The English dataset source is:
+
+https://github.com/farskipper/kjv
+
+Analyze the structure and determine the best mapping strategy.
+
+---
+
+# Language Modes
+
+Add a Language Mode selector in the Admin Dashboard.
+
+Options:
+
+○ Telugu
+○ English
+○ Both
+
+Default:
+
+✓ Telugu
+
+The selected language mode must immediately update:
+
+* Preview Panel
+* Display Screen
+
+via real-time synchronization.
+
+---
+
+# Display Behavior
+
+## Telugu Mode
+
+Display only Telugu verse text.
+
+Example:
+
+దేవుడు లోకమును ఎంతో ప్రేమించెను...
+
+---
+
+## English Mode
+
+Display only English verse text.
+
+Example:
+
+For God so loved the world...
+
+---
+
+## Both Mode
+
+Display both translations.
+
+Example:
+
+దేవుడు లోకమును ఎంతో ప్రేమించెను...
+
+For God so loved the world...
+
+---
+
+# Layout Modes
+
+When "Both" is selected, provide two layout options.
+
+### Stack Layout
+
+Telugu
+
+English
+
+(Default)
+
+---
+
+### Side-by-Side Layout
+
+Telugu Text | English Text
+
+This should be responsive and optimized for projection screens.
+
+---
+
+# Unified Bible Data Layer
+
+Create a canonical Bible abstraction layer.
+
+Example:
+
+Book ID:
+john
+
+English:
+John
+
+Telugu:
+యోహాను
+
+The application should navigate using the canonical book ID rather than dataset-specific names.
+
+All language datasets should map to the same internal structure.
+
+Do not duplicate navigation logic.
+
+---
+
+# English Search Support
+
+Allow searching using English book names.
+
+Examples:
+
+genesis
+john
+romans
+psalm
+matthew
+
+Support abbreviations:
+
+gen
+jn
+john
+rom
+ps
+1 cor
+2 cor
+1 pet
+2 pet
+
+The search system should automatically map English names to the correct Telugu dataset entries.
+
+---
+
+# Direct Reference Search
+
+Support:
+
+john 3:16
+romans 8:28
+psalm 91:1
+genesis 1:1
+
+When entered:
+
+* Automatically locate the verse
+* Load the verse
+* Update the display
+* Maintain real-time synchronization
+
+---
+
+# Telugu Font Expansion
+
+Add additional Telugu font options.
+
+Current font support is too limited.
+
+Add support for:
+
+* Noto Sans Telugu
+* Noto Serif Telugu
+* Mandali
+* Ramabhadra
+* Gurajada
+* Suranna
+* Mallanna
+* Ponnala
+
+Load fonts properly and optimize for performance.
+
+---
+
+# Font Categories
+
+Instead of showing only font names, create user-friendly categories.
+
+Examples:
+
+Modern
+Classic
+Serif
+Broadcast
+Display
+
+Map these categories internally to appropriate Telugu fonts.
+
+Church volunteers should not need to understand typography.
+
+---
+
+# Intelligent Auto Font Scaling
+
+Implement automatic font scaling.
+
+Requirements:
+
+* Short verses should appear larger.
+* Long verses should automatically shrink.
+* Prevent clipping.
+* Prevent overflow.
+* Maintain readability.
+* Adapt to screen size.
+
+The operator should not need to manually resize text during live services.
+
+Manual font size should remain available as an override.
+
+---
+
+# Keyboard Navigation Improvements
+
+Search Results:
+
+↑ Move Up
+↓ Move Down
+Enter Select
+
+Verse Navigation:
+
+→ Next Verse
+↓ Next Verse
+
+← Previous Verse
+↑ Previous Verse
+
+Space Next Verse
+
+Shift + Space Previous Verse
+
+Chapter boundaries should be handled automatically.
+
+Example:
+
+John 3:36
+→
+John 4:1
+
+The display should update instantly.
+
+---
+
+# Preview Consistency
+
+The Preview Panel and Display Screen currently render differently.
+
+Requirements:
+
+* Create a shared rendering component.
+* Preview should be a scaled version of Display.
+* Typography calculations should come from a single source.
+* Background rendering should be identical.
+* Language modes should render identically.
+
+---
+
+# Background System Improvements
+
+Ensure backgrounds work correctly in:
+
+* Preview
+* Display
+
+Support:
+
+* Solid Colors
+* Gradients
+* Uploaded Images
+
+Background changes must not break transitions.
+
+Background updates and verse transitions must operate independently.
+
+---
+
+# Architecture Requirements
+
+Do not create separate Bible navigation systems for each language.
+
+Create a reusable translation-aware Bible layer.
+
+The architecture should support future additions such as:
+
+* NIV
+* NKJV
+* ESV
+* Additional Telugu translations
+
+without major refactoring.
+
+---
+
+# Before Coding
+
+First provide:
+
+1. Analysis of the English KJV dataset
+2. Analysis of the Telugu dataset
+3. Proposed unified Bible schema
+4. Mapping strategy
+5. Search strategy
+6. UI changes required
+7. Risks and edge cases
+
+Only after approval should implementation begin.
