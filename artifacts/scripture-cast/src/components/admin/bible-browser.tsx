@@ -25,27 +25,22 @@ type PendingVerse = 'first' | 'last' | null;
 
 export function BibleBrowser() {
   // Navigation state
-  const [selectedBookId, setSelectedBookId]       = useState<string>('');
-  const [selectedChapter, setSelectedChapter]     = useState<number>(0);
+  const [selectedBookId, setSelectedBookId]         = useState<string>('');
+  const [selectedChapter, setSelectedChapter]       = useState<number>(0);
   const [selectedVerseNumber, setSelectedVerseNumber] = useState<number>(0);
-  const [pendingVerse, setPendingVerse]           = useState<PendingVerse>(null);
+  const [pendingVerse, setPendingVerse]             = useState<PendingVerse>(null);
 
   // Search / dropdown state
-  const [searchQuery, setSearchQuery]             = useState('');
-  const [showDropdown, setShowDropdown]           = useState(false);
+  const [searchQuery, setSearchQuery]               = useState('');
+  const [showDropdown, setShowDropdown]             = useState(false);
   const [dropdownActiveIndex, setDropdownActiveIndex] = useState(-1);
-  const [isNavigating, setIsNavigating]           = useState(false);
+  const [isNavigating, setIsNavigating]             = useState(false);
 
   // Refs
-  const containerRef   = useRef<HTMLDivElement>(null);
-  const inputRef       = useRef<HTMLInputElement>(null);
-  const verseListRef   = useRef<HTMLDivElement>(null);
-  /**
-   * Stable holder for the latest goNext / goPrev implementations.
-   * Synced after every render so the single-registration global keydown
-   * listener never goes stale without needing to re-register.
-   */
-  const handlerRef = useRef({ goNext: () => {}, goPrev: () => {} });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef     = useRef<HTMLInputElement>(null);
+  const verseListRef = useRef<HTMLDivElement>(null);
+  const handlerRef   = useRef({ goNext: () => {}, goPrev: () => {} });
 
   // Store
   const setPresentationState = usePresentationStore((s) => s.setPresentationState);
@@ -54,32 +49,42 @@ export function BibleBrowser() {
   const transition           = usePresentationStore((s) => s.transition);
 
   // Data
-  const { data: books, isLoading: booksLoading } = useListBooks();
+  const { data: books,   isLoading: booksLoading }   = useListBooks();
   const { data: chapters, isLoading: chaptersLoading } = useListChapters(selectedBookId);
   const { data: verses,   isLoading: versesLoading }   = useListVerses(selectedBookId, selectedChapter);
   const { mutate: updateState } = useUpdatePresentationState();
 
   // ── Core present helper ──────────────────────────────────────────────────
 
-  /**
-   * Push a verse to the display.
-   * Explicit params let this be called with pre-loaded data (e.g. after a
-   * chapter boundary cross, where `verses` may still be the old chapter).
-   */
   function doPresent(
     verseNum: number,
     versesData: typeof verses,
-    bookId   = selectedBookId,
-    chapter  = selectedChapter,
+    bookId  = selectedBookId,
+    chapter = selectedChapter,
   ) {
     if (!versesData) return;
-    const book     = books?.find((b) => b.id === bookId);
-    const text     = versesData.find((v) => v.number === verseNum)?.text ?? '';
-    const detail   = {
-      bookId, bookName: book?.name ?? '', chapter, verse: verseNum,
-      text,   reference: `${book?.name ?? ''} ${chapter}:${verseNum}`,
+    const book        = books?.find((b) => b.id === bookId);
+    const verseObj    = versesData.find((v) => v.number === verseNum);
+    const text        = verseObj?.text ?? '';
+    const textEnglish = verseObj?.textEnglish ?? null;
+    const englishName = book?.englishName ?? bookId;
+    const detail = {
+      bookId,
+      bookName:        book?.name ?? bookId,
+      englishName,
+      chapter,
+      verse:           verseNum,
+      text,
+      textEnglish,
+      reference:       `${book?.name ?? bookId} ${chapter}:${verseNum}`,
+      referenceEnglish: `${englishName} ${chapter}:${verseNum}`,
     };
-    const newState = { active: true, cleared: false, verse: detail, typography, background, transition };
+    const s = usePresentationStore.getState();
+    const newState = {
+      active: true, cleared: false, verse: detail,
+      language: s.language, layout: s.layout,
+      typography: s.typography, background: s.background, transition: s.transition,
+    };
     setPresentationState(newState);
     updateState({ data: newState });
   }
@@ -91,14 +96,11 @@ export function BibleBrowser() {
       if (!verses?.length || !selectedVerseNumber) return;
       const idx = verses.findIndex((v) => v.number === selectedVerseNumber);
       if (idx < 0) return;
-
       if (idx < verses.length - 1) {
-        // Next verse in the same chapter
         const next = verses[idx + 1];
         setSelectedVerseNumber(next.number);
         doPresent(next.number, verses);
       } else if (chapters) {
-        // Cross chapter boundary → forward
         const ci = chapters.findIndex((c) => c.number === selectedChapter);
         if (ci < chapters.length - 1) {
           setSelectedChapter(chapters[ci + 1].number);
@@ -112,14 +114,11 @@ export function BibleBrowser() {
       if (!verses?.length || !selectedVerseNumber) return;
       const idx = verses.findIndex((v) => v.number === selectedVerseNumber);
       if (idx < 0) return;
-
       if (idx > 0) {
-        // Previous verse in the same chapter
         const prev = verses[idx - 1];
         setSelectedVerseNumber(prev.number);
         doPresent(prev.number, verses);
       } else if (chapters) {
-        // Cross chapter boundary → backward
         const ci = chapters.findIndex((c) => c.number === selectedChapter);
         if (ci > 0) {
           setSelectedChapter(chapters[ci - 1].number);
@@ -128,67 +127,43 @@ export function BibleBrowser() {
         }
       }
     };
-  }); // intentionally no deps — runs after every render to stay fresh
+  }); // intentionally no deps — runs after every render
 
-  // ── Register global keydown listener ONCE ───────────────────────────────
+  // ── Global keydown (registered once) ────────────────────────────────────
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
-
-      // Let the search input handle its own arrow/enter keys (handled below via onKeyDown prop)
-      const isSearchInput = target === inputRef.current;
-      if (isSearchInput) return;
-
-      // Don't interfere with other inputs (select triggers, etc.)
-      const isOtherInput =
-        target.tagName === 'INPUT'    ||
-        target.tagName === 'TEXTAREA' ||
-        (target as HTMLElement).isContentEditable;
-      if (isOtherInput) return;
-
-      // Ignore modified keys (Ctrl+R, Cmd+…) except plain Shift for Shift+Space
+      if (target === inputRef.current) return;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-
       switch (e.key) {
         case ' ':
           e.preventDefault();
           if (e.shiftKey) handlerRef.current.goPrev(); else handlerRef.current.goNext();
           break;
-        case 'ArrowRight':
-        case 'ArrowDown':
-          e.preventDefault();
-          handlerRef.current.goNext();
-          break;
-        case 'ArrowLeft':
-        case 'ArrowUp':
-          e.preventDefault();
-          handlerRef.current.goPrev();
-          break;
+        case 'ArrowRight': case 'ArrowDown': e.preventDefault(); handlerRef.current.goNext(); break;
+        case 'ArrowLeft':  case 'ArrowUp':   e.preventDefault(); handlerRef.current.goPrev(); break;
       }
     }
-
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []); // empty — reads from stable handlerRef
+  }, []);
 
-  // ── Auto-scroll active verse into view ──────────────────────────────────
+  // ── Auto-scroll active verse ─────────────────────────────────────────────
 
   useEffect(() => {
     if (!selectedVerseNumber || !verseListRef.current) return;
-    const el = verseListRef.current.querySelector<HTMLElement>(
-      `[data-verse="${selectedVerseNumber}"]`
-    );
-    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    verseListRef.current
+      .querySelector<HTMLElement>(`[data-verse="${selectedVerseNumber}"]`)
+      ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [selectedVerseNumber]);
 
-  // ── Pending-verse resolution (cross-chapter boundary) ───────────────────
+  // ── Pending-verse resolution ─────────────────────────────────────────────
 
   useEffect(() => {
     if (!pendingVerse || !verses?.length) return;
-    const target = pendingVerse === 'first'
-      ? verses[0].number
-      : verses[verses.length - 1].number;
+    const target = pendingVerse === 'first' ? verses[0].number : verses[verses.length - 1].number;
     setSelectedVerseNumber(target);
     doPresent(target, verses);
     setPendingVerse(null);
@@ -200,8 +175,8 @@ export function BibleBrowser() {
   const { referenceMatch, bookMatches } = useMemo(() => {
     const q = searchQuery.trim();
     if (!q) return { referenceMatch: null, bookMatches: [] };
-    const ref   = parseReference(q);
-    const found = searchBooksByEnglish(q).slice(0, 6);
+    const ref      = parseReference(q);
+    const found    = searchBooksByEnglish(q).slice(0, 6);
     const filtered = ref ? found.filter((r) => r.book.id !== ref.book.id).slice(0, 4) : found;
     return { referenceMatch: ref, bookMatches: filtered };
   }, [searchQuery]);
@@ -209,15 +184,12 @@ export function BibleBrowser() {
   const totalSuggestions = (referenceMatch ? 1 : 0) + bookMatches.length;
   const hasSuggestions   = totalSuggestions > 0;
 
-  // Reset highlight when query changes
   useEffect(() => { setDropdownActiveIndex(-1); }, [searchQuery]);
 
-  // Close dropdown on outside click
   useEffect(() => {
     function onPointerDown(e: PointerEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node))
         setShowDropdown(false);
-      }
     }
     document.addEventListener('pointerdown', onPointerDown);
     return () => document.removeEventListener('pointerdown', onPointerDown);
@@ -243,8 +215,6 @@ export function BibleBrowser() {
     setShowDropdown(false);
     setSearchQuery('');
     setDropdownActiveIndex(-1);
-
-    // Always seed navigation state so keyboard nav works immediately after jump
     setSelectedBookId(ref.book.id);
     setSelectedChapter(ref.chapter);
 
@@ -257,15 +227,24 @@ export function BibleBrowser() {
         );
         if (res.ok) {
           const data = await res.json();
+          const englishName = ref.book.englishName;
           const detail = {
-            bookId:    ref.book.id,
-            bookName:  ref.book.teluguName,
-            chapter:   ref.chapter,
-            verse:     ref.verse,
-            text:      data.text ?? '',
-            reference: `${ref.book.teluguName} ${ref.chapter}:${ref.verse}`,
+            bookId:           ref.book.id,
+            bookName:         ref.book.teluguName,
+            englishName,
+            chapter:          ref.chapter,
+            verse:            ref.verse,
+            text:             data.text ?? '',
+            textEnglish:      data.textEnglish ?? null,
+            reference:        `${ref.book.teluguName} ${ref.chapter}:${ref.verse}`,
+            referenceEnglish: `${englishName} ${ref.chapter}:${ref.verse}`,
           };
-          const newState = { active: true, cleared: false, verse: detail, typography, background, transition };
+          const s = usePresentationStore.getState();
+          const newState = {
+            active: true, cleared: false, verse: detail,
+            language: s.language, layout: s.layout,
+            typography: s.typography, background: s.background, transition: s.transition,
+          };
           setPresentationState(newState);
           updateState({ data: newState });
         }
@@ -273,12 +252,10 @@ export function BibleBrowser() {
         setIsNavigating(false);
       }
     } else {
-      // Book + chapter only — show verse list, wait for user click
       setSelectedVerseNumber(0);
     }
   };
 
-  /** Select whichever dropdown item is at the given flat index. */
   const selectDropdownItem = (index: number) => {
     if (referenceMatch) {
       if (index === 0) { handleReferenceSelect(referenceMatch); return; }
@@ -290,43 +267,24 @@ export function BibleBrowser() {
     }
   };
 
-  /** Keyboard handler for the search input — manages dropdown navigation. */
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Escape') {
-      setShowDropdown(false);
-      setSearchQuery('');
-      setDropdownActiveIndex(-1);
-      return;
+      setShowDropdown(false); setSearchQuery(''); setDropdownActiveIndex(-1); return;
     }
-
     if (showDropdown && hasSuggestions) {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setDropdownActiveIndex((i) => Math.min(i + 1, totalSuggestions - 1));
-        return;
-      }
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setDropdownActiveIndex((i) => Math.max(i - 1, 0));
-        return;
-      }
+      if (e.key === 'ArrowDown') { e.preventDefault(); setDropdownActiveIndex((i) => Math.min(i + 1, totalSuggestions - 1)); return; }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); setDropdownActiveIndex((i) => Math.max(i - 1, 0)); return; }
     }
-
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (dropdownActiveIndex >= 0) {
-        selectDropdownItem(dropdownActiveIndex);
-      } else if (referenceMatch) {
-        handleReferenceSelect(referenceMatch);
-      } else if (bookMatches.length === 1) {
-        handleBookSelect(bookMatches[0].book);
-      }
+      if (dropdownActiveIndex >= 0) selectDropdownItem(dropdownActiveIndex);
+      else if (referenceMatch) handleReferenceSelect(referenceMatch);
+      else if (bookMatches.length === 1) handleBookSelect(bookMatches[0].book);
     }
   };
 
-  const selectedBookName = books?.find((b) => b.id === selectedBookId)?.name ?? '';
-
-  // ── Suggestion row class helpers ─────────────────────────────────────────
+  const selectedBook   = books?.find((b) => b.id === selectedBookId);
+  const selectedBookName = selectedBook?.name ?? '';
 
   function suggestionCls(index: number, extra = '') {
     const active = dropdownActiveIndex === index;
@@ -364,7 +322,6 @@ export function BibleBrowser() {
             autoComplete="off"
           />
 
-          {/* Suggestions dropdown */}
           {showDropdown && hasSuggestions && (
             <div
               role="listbox"
@@ -402,7 +359,7 @@ export function BibleBrowser() {
                   >
                     <BookOpen className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                     <span className="font-medium text-foreground">{book.englishName}</span>
-                    <span className="text-muted-foreground mx-1">→</span>
+                    <span className="text-muted-foreground mx-1">·</span>
                     <span className="text-muted-foreground">{book.teluguName}</span>
                   </button>
                 );
@@ -420,7 +377,10 @@ export function BibleBrowser() {
           </SelectTrigger>
           <SelectContent className="max-h-72 overflow-y-auto">
             {books?.map((book) => (
-              <SelectItem key={book.id} value={book.id}>{book.name}</SelectItem>
+              <SelectItem key={book.id} value={book.id}>
+                {book.englishName}
+                <span className="ml-1.5 text-muted-foreground text-xs">· {book.name}</span>
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -433,12 +393,10 @@ export function BibleBrowser() {
         {selectedBookId && !selectedChapter && (
           <div className="p-4">
             <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">
-              {selectedBookName} — Chapters
+              {selectedBook?.englishName ?? selectedBookName} — Chapters
             </p>
             {chaptersLoading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="animate-spin text-muted-foreground" />
-              </div>
+              <div className="flex justify-center py-8"><Loader2 className="animate-spin text-muted-foreground" /></div>
             ) : (
               <div className="grid grid-cols-5 gap-2">
                 {chapters?.map((ch) => (
@@ -460,7 +418,6 @@ export function BibleBrowser() {
         {/* Verse list */}
         {selectedBookId && selectedChapter > 0 && (
           <div ref={verseListRef}>
-            {/* Chapter header / back button */}
             <div className="sticky top-0 z-10 px-4 py-2 border-b border-border bg-card/95 backdrop-blur flex items-center gap-2">
               <Button
                 variant="ghost"
@@ -472,9 +429,8 @@ export function BibleBrowser() {
                 Chapters
               </Button>
               <span className="text-sm font-medium text-muted-foreground">
-                {selectedBookName} {selectedChapter}
+                {selectedBook?.englishName ?? selectedBookName} {selectedChapter}
               </span>
-              {/* Live indicator when a verse is active */}
               {selectedVerseNumber > 0 && (
                 <span className="ml-auto text-xs font-mono text-primary/80 tracking-wide">
                   v.{selectedVerseNumber}
@@ -483,9 +439,7 @@ export function BibleBrowser() {
             </div>
 
             {versesLoading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="animate-spin text-muted-foreground" />
-              </div>
+              <div className="flex justify-center py-8"><Loader2 className="animate-spin text-muted-foreground" /></div>
             ) : (
               <div className="flex flex-col">
                 {verses?.map((v) => {
@@ -502,15 +456,15 @@ export function BibleBrowser() {
                       ].join(' ')}
                       onClick={() => handleVerseClick(v.number)}
                     >
-                      <span
-                        className={[
-                          'text-xs min-w-[1.75rem] pt-0.5 font-mono font-medium',
-                          isActive ? 'text-primary' : 'text-muted-foreground',
-                        ].join(' ')}
-                      >
+                      <span className={['text-xs min-w-[1.75rem] pt-0.5 font-mono font-medium', isActive ? 'text-primary' : 'text-muted-foreground'].join(' ')}>
                         {v.number}
                       </span>
-                      <span className="text-sm leading-relaxed">{v.text}</span>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm leading-relaxed">{v.text}</span>
+                        {v.textEnglish && (
+                          <span className="text-xs leading-relaxed text-muted-foreground">{v.textEnglish}</span>
+                        )}
+                      </div>
                     </button>
                   );
                 })}
@@ -519,7 +473,6 @@ export function BibleBrowser() {
           </div>
         )}
 
-        {/* Empty state */}
         {!selectedBookId && !searchQuery && (
           <div className="p-6 text-center text-muted-foreground text-sm space-y-1">
             <p>Select a book to begin</p>

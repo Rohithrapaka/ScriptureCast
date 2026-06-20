@@ -1,0 +1,2 @@
+- [ScriptureCast bible data layer](bible-data-layer.md) — KJV and Telugu both load from disk; Telugu IDs are Telugu names; English names + textEnglish returned alongside Telugu in all verse API responses.
+- [ScriptureCast font loading](font-loading.md) — 8 Telugu Google Fonts loaded in index.html; auto-scale multiplier in display.tsx keyed on char count thresholds.

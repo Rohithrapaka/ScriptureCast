@@ -3,7 +3,7 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: ScriptureCast API — Telugu Bible presentation platform
+  description: ScriptureCast API — Bilingual Telugu/English Bible presentation platform
 servers:
   - url: /api
     description: Base API path
@@ -21,7 +21,6 @@ paths:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -35,7 +34,6 @@ paths:
       operationId: listBooks
       tags: [bible]
       summary: List all Bible books
-      description: Returns all available books from the Telugu Bible dataset
       responses:
         "200":
           description: List of books
@@ -50,7 +48,6 @@ paths:
     get:
       operationId: listChapters
       tags: [bible]
-      summary: List chapters for a book
       parameters:
         - name: bookId
           in: path
@@ -77,7 +74,6 @@ paths:
     get:
       operationId: listVerses
       tags: [bible]
-      summary: List verses for a chapter
       parameters:
         - name: bookId
           in: path
@@ -91,7 +87,7 @@ paths:
             type: integer
       responses:
         "200":
-          description: List of verses
+          description: List of verses (both Telugu and English when available)
           content:
             application/json:
               schema:
@@ -109,7 +105,6 @@ paths:
     get:
       operationId: getVerse
       tags: [bible]
-      summary: Get a single verse
       parameters:
         - name: bookId
           in: path
@@ -144,14 +139,12 @@ paths:
     get:
       operationId: searchBible
       tags: [bible]
-      summary: Search Bible by reference or text
       parameters:
         - name: q
           in: query
           required: true
           schema:
             type: string
-          description: Search query (e.g. "John 3:16" or "యోహాను 3:16")
       responses:
         "200":
           description: Search results
@@ -164,8 +157,6 @@ paths:
     get:
       operationId: getPresentationState
       tags: [presentation]
-      summary: Get current presentation state
-      description: Returns the live presentation state being shown on the display screen
       responses:
         "200":
           description: Current state
@@ -177,8 +168,6 @@ paths:
     post:
       operationId: updatePresentationState
       tags: [presentation]
-      summary: Update presentation state
-      description: Updates the live presentation state and broadcasts via Socket.IO
       requestBody:
         required: true
         content:
@@ -197,8 +186,6 @@ paths:
     post:
       operationId: clearPresentation
       tags: [presentation]
-      summary: Clear the display screen
-      description: Broadcasts a clear event to all display screens
       responses:
         "200":
           description: Cleared
@@ -214,22 +201,23 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
     Book:
       type: object
-      required: [id, name, chapters]
+      required: [id, name, englishName, chapters]
       properties:
         id:
           type: string
-          description: Unique identifier for the book
+          description: Telugu book name used as the unique identifier
         name:
           type: string
-          description: Telugu book name
+          description: Telugu book name (display)
+        englishName:
+          type: string
+          description: English book name (display)
         chapters:
           type: integer
-          description: Total number of chapters
 
     Chapter:
       type: object
@@ -239,7 +227,6 @@ components:
           type: integer
         verses:
           type: integer
-          description: Total number of verses in this chapter
 
     Verse:
       type: object
@@ -250,24 +237,38 @@ components:
         text:
           type: string
           description: Telugu verse text
+        textEnglish:
+          type: ["string", "null"]
+          description: KJV English verse text (null when unavailable)
 
     VerseDetail:
       type: object
-      required: [bookId, bookName, chapter, verse, text, reference]
+      required: [bookId, bookName, englishName, chapter, verse, text, reference, referenceEnglish]
       properties:
         bookId:
           type: string
         bookName:
           type: string
+          description: Telugu book name
+        englishName:
+          type: string
+          description: English book name
         chapter:
           type: integer
         verse:
           type: integer
         text:
           type: string
+          description: Telugu verse text
+        textEnglish:
+          type: ["string", "null"]
+          description: KJV English verse text
         reference:
           type: string
-          description: Formatted reference string e.g. "యోహాను 3:16"
+          description: Telugu reference e.g. "యోహాను 3:16"
+        referenceEnglish:
+          type: string
+          description: English reference e.g. "John 3:16"
 
     SearchResult:
       type: object
@@ -277,11 +278,12 @@ components:
           type: string
         result:
           type: ["object", "null"]
-          description: The matched verse detail, null if not found
           properties:
             bookId:
               type: string
             bookName:
+              type: string
+            englishName:
               type: string
             chapter:
               type: integer
@@ -289,8 +291,36 @@ components:
               type: integer
             text:
               type: string
+            textEnglish:
+              type: ["string", "null"]
             reference:
               type: string
+            referenceEnglish:
+              type: string
+
+    # Inline verse shape used inside PresentationState
+    PresentationVerse:
+      type: object
+      required: [bookId, bookName, englishName, chapter, verse, text, reference, referenceEnglish]
+      properties:
+        bookId:
+          type: string
+        bookName:
+          type: string
+        englishName:
+          type: string
+        chapter:
+          type: integer
+        verse:
+          type: integer
+        text:
+          type: string
+        textEnglish:
+          type: ["string", "null"]
+        reference:
+          type: string
+        referenceEnglish:
+          type: string
 
     PresentationState:
       type: object
@@ -301,20 +331,17 @@ components:
         cleared:
           type: boolean
         verse:
-          type: ["object", "null"]
-          properties:
-            bookId:
-              type: string
-            bookName:
-              type: string
-            chapter:
-              type: integer
-            verse:
-              type: integer
-            text:
-              type: string
-            reference:
-              type: string
+          oneOf:
+            - $ref: "#/components/schemas/PresentationVerse"
+            - type: "null"
+        language:
+          type: string
+          enum: [telugu, english, both]
+          description: Which translation(s) to display
+        layout:
+          type: string
+          enum: [stack, side-by-side]
+          description: Layout for bilingual mode
         typography:
           $ref: "#/components/schemas/Typography"
         background:
@@ -330,20 +357,15 @@ components:
         cleared:
           type: boolean
         verse:
-          type: ["object", "null"]
-          properties:
-            bookId:
-              type: string
-            bookName:
-              type: string
-            chapter:
-              type: integer
-            verse:
-              type: integer
-            text:
-              type: string
-            reference:
-              type: string
+          oneOf:
+            - $ref: "#/components/schemas/PresentationVerse"
+            - type: "null"
+        language:
+          type: string
+          enum: [telugu, english, both]
+        layout:
+          type: string
+          enum: [stack, side-by-side]
         typography:
           $ref: "#/components/schemas/Typography"
         background:
@@ -356,10 +378,8 @@ components:
       properties:
         fontFamily:
           type: string
-          description: Font family name
         fontSize:
           type: integer
-          description: Font size in px
         fontWeight:
           type: string
           enum: [light, regular, medium, bold]
@@ -368,10 +388,8 @@ components:
           enum: [left, center, right]
         textColor:
           type: string
-          description: CSS color value
         lineHeight:
           type: number
-          description: Line height multiplier
         shadow:
           type: boolean
         outline:
@@ -380,6 +398,9 @@ components:
           type: integer
         showReference:
           type: boolean
+        autoScale:
+          type: boolean
+          description: Automatically scale font size based on verse length
 
     Background:
       type: object
@@ -406,7 +427,6 @@ components:
           enum: [fade, slide, crossfade]
         duration:
           type: integer
-          description: Duration in milliseconds
 
     ClearResult:
       type: object

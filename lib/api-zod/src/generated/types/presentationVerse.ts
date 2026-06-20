@@ -6,13 +6,15 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface Verse {
-  number: number;
-  /** Telugu verse text */
+export interface PresentationVerse {
+  bookId: string;
+  bookName: string;
+  englishName: string;
+  chapter: number;
+  verse: number;
   text: string;
-  /**
-     * KJV English verse text (null when unavailable)
-     * @nullable
-     */
+  /** @nullable */
   textEnglish?: string | null;
+  reference: string;
+  referenceEnglish: string;
 }

@@ -13,6 +13,7 @@ export const defaultTypography: Typography = {
   outline: false,
   outlineWidth: 2,
   showReference: true,
+  autoScale: true,
 };
 
 export const defaultBackground: Background = {
@@ -50,6 +51,8 @@ export const usePresentationStore = create<PresentationStore>()(
       active: false,
       cleared: true,
       verse: null,
+      language: 'telugu' as const,
+      layout: 'stack' as const,
       typography: defaultTypography,
       background: defaultBackground,
       transition: defaultTransition,
@@ -58,13 +61,13 @@ export const usePresentationStore = create<PresentationStore>()(
     }),
     {
       name: 'scripture-cast-admin-settings',
-      // Don't auto-hydrate — the admin page explicitly calls rehydrate() on
-      // mount so the display page never touches the admin's persisted state.
       skipHydration: true,
       partialize: (state) => ({
         typography: state.typography,
         background: state.background,
         transition: state.transition,
+        language: state.language,
+        layout: state.layout,
       }),
     }
   )
