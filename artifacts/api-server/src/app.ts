@@ -33,18 +33,25 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
-// Single-service deployment: serve the Vite-built frontend from Express.
-// The frontend is built to artifacts/scripture-cast/dist/public (relative to
-// the repo root).  In production the process starts from the repo root, so
-// the path resolves correctly.  This block is a no-op when the directory
-// doesn't exist (i.e. in development, where Vite runs as a separate service).
+// ── Single-service deployment ─────────────────────────────────────────────────
+// In production the Express server serves the Vite-compiled frontend.
+// The frontend build outputs to artifacts/scripture-cast/dist/public relative
+// to the repo root (which is process.cwd() when started from there).
+// In development this block is a no-op: the dist directory doesn't exist and
+// Vite serves the frontend as a separate process on its own port.
 const frontendDist = path.resolve(process.cwd(), "artifacts/scripture-cast/dist/public");
+
 if (fs.existsSync(frontendDist)) {
+  // Serve static assets (JS, CSS, fonts, images)
   app.use(express.static(frontendDist));
-  // SPA fallback: any request that isn't /api or /socket.io gets index.html
-  app.get("*", (_req, res) => {
+
+  // SPA fallback: any request not matched by /api/* or /socket.io/* serves
+  // index.html so React Router can handle client-side navigation.
+  // Express 5 requires named wildcards; "/{*path}" matches everything.
+  app.get("/{*path}", (_req, res) => {
     res.sendFile(path.join(frontendDist, "index.html"));
   });
+
   logger.info({ frontendDist }, "Serving frontend static files");
 }
 
