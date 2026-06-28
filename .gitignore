@@ -42,9 +42,6 @@ Thumbs.db
 # Replit workspace files (not needed in external deployments)
 .cache/
 .local/
-.replit
-.replitignore
-.replit-artifact/
 
 # Environment
 .env
