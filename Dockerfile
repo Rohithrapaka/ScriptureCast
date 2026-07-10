@@ -1,6 +1,6 @@
 # ── Stage 1: Build ───────────────────────────────────────────────────────────
 # Installs all dependencies and compiles the Vite frontend + esbuild server.
-FROM node:24-alpine AS builder
+FROM node:24-bookworm-slim AS builder
 WORKDIR /app
 
 # Enable pnpm via corepack (bundled with Node ≥ 16)
