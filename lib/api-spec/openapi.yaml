@@ -401,6 +401,13 @@ components:
         autoScale:
           type: boolean
           description: Automatically scale font size based on verse length
+        refFontSize:
+          type: integer
+          description: Reference text font size in px (0 = auto, defaults to ~52% of main)
+        refFontWeight:
+          type: string
+          enum: [light, regular, medium, bold]
+          description: Reference text font weight (defaults to same as main)
 
     Background:
       type: object

@@ -133,6 +133,19 @@ export const TypographyTextAlign = {
   right: 'right',
 } as const;
 
+/**
+ * Reference text font weight (defaults to same as main)
+ */
+export type TypographyRefFontWeight = typeof TypographyRefFontWeight[keyof typeof TypographyRefFontWeight];
+
+
+export const TypographyRefFontWeight = {
+  light: 'light',
+  regular: 'regular',
+  medium: 'medium',
+  bold: 'bold',
+} as const;
+
 export interface Typography {
   fontFamily?: string;
   fontSize?: number;
@@ -146,6 +159,10 @@ export interface Typography {
   showReference?: boolean;
   /** Automatically scale font size based on verse length */
   autoScale?: boolean;
+  /** Reference text font size in px (0 = auto, defaults to ~52% of main) */
+  refFontSize?: number;
+  /** Reference text font weight (defaults to same as main) */
+  refFontWeight?: TypographyRefFontWeight;
 }
 
 export type BackgroundType = typeof BackgroundType[keyof typeof BackgroundType];

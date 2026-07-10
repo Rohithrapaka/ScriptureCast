@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { TypographyFontWeight } from './typographyFontWeight';
+import type { TypographyRefFontWeight } from './typographyRefFontWeight';
 import type { TypographyTextAlign } from './typographyTextAlign';
 
 export interface Typography {
@@ -21,4 +22,8 @@ export interface Typography {
   showReference?: boolean;
   /** Automatically scale font size based on verse length */
   autoScale?: boolean;
+  /** Reference text font size in px (0 = auto, defaults to ~52% of main) */
+  refFontSize?: number;
+  /** Reference text font weight (defaults to same as main) */
+  refFontWeight?: TypographyRefFontWeight;
 }

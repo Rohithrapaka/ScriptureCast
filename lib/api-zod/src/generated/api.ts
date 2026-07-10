@@ -118,7 +118,9 @@ export const GetPresentationStateResponse = zod.object({
   "outline": zod.boolean().optional(),
   "outlineWidth": zod.number().optional(),
   "showReference": zod.boolean().optional(),
-  "autoScale": zod.boolean().optional().describe('Automatically scale font size based on verse length')
+  "autoScale": zod.boolean().optional().describe('Automatically scale font size based on verse length'),
+  "refFontSize": zod.number().optional().describe('Reference text font size in px (0 = auto, defaults to ~52% of main)'),
+  "refFontWeight": zod.enum(['light', 'regular', 'medium', 'bold']).optional().describe('Reference text font weight (defaults to same as main)')
 }).optional(),
   "background": zod.object({
   "type": zod.enum(['solid', 'gradient', 'image']).optional(),
@@ -162,7 +164,9 @@ export const UpdatePresentationStateBody = zod.object({
   "outline": zod.boolean().optional(),
   "outlineWidth": zod.number().optional(),
   "showReference": zod.boolean().optional(),
-  "autoScale": zod.boolean().optional().describe('Automatically scale font size based on verse length')
+  "autoScale": zod.boolean().optional().describe('Automatically scale font size based on verse length'),
+  "refFontSize": zod.number().optional().describe('Reference text font size in px (0 = auto, defaults to ~52% of main)'),
+  "refFontWeight": zod.enum(['light', 'regular', 'medium', 'bold']).optional().describe('Reference text font weight (defaults to same as main)')
 }).optional(),
   "background": zod.object({
   "type": zod.enum(['solid', 'gradient', 'image']).optional(),
@@ -205,7 +209,9 @@ export const UpdatePresentationStateResponse = zod.object({
   "outline": zod.boolean().optional(),
   "outlineWidth": zod.number().optional(),
   "showReference": zod.boolean().optional(),
-  "autoScale": zod.boolean().optional().describe('Automatically scale font size based on verse length')
+  "autoScale": zod.boolean().optional().describe('Automatically scale font size based on verse length'),
+  "refFontSize": zod.number().optional().describe('Reference text font size in px (0 = auto, defaults to ~52% of main)'),
+  "refFontWeight": zod.enum(['light', 'regular', 'medium', 'bold']).optional().describe('Reference text font weight (defaults to same as main)')
 }).optional(),
   "background": zod.object({
   "type": zod.enum(['solid', 'gradient', 'image']).optional(),

@@ -9,6 +9,9 @@ export interface Typography {
   outline: boolean;
   outlineWidth: number;
   showReference: boolean;
+  autoScale?: boolean;
+  refFontSize?: number;
+  refFontWeight?: string;
 }
 
 export interface Background {

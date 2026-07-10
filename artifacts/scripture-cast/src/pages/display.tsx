@@ -3,6 +3,15 @@ import { usePresentationStore } from '@/hooks/use-presentation-store';
 import { usePresentationSocket } from '@/hooks/use-presentation-socket';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// ── Font weight string → CSS numeric value ───────────────────────────────────
+
+const FONT_WEIGHT_MAP: Record<string, string> = {
+  light:   '300',
+  regular: '400',
+  medium:  '500',
+  bold:    '700',
+};
+
 // ── Auto-scale: returns a font multiplier based on combined text length ──────
 
 function computeAutoScale(
@@ -85,10 +94,11 @@ export function DisplayPreview() {
       ? computeAutoScale(verse.text, verse.textEnglish, language)
       : 1.0;
     const scaled = base * autoMult * scaleMult;
+    const cssWeight = FONT_WEIGHT_MAP[typography.fontWeight ?? 'bold'] ?? typography.fontWeight ?? '700';
     return {
       fontFamily:  typography.fontFamily ? `"${typography.fontFamily}", sans-serif` : 'inherit',
       fontSize:    clampSize(scaled),
-      fontWeight:  typography.fontWeight || 'bold',
+      fontWeight:  cssWeight,
       textAlign:   (typography.textAlign as React.CSSProperties['textAlign']) || 'center',
       color:       typography.textColor || '#fff',
       lineHeight:  typography.lineHeight || 1.4,
@@ -97,15 +107,24 @@ export function DisplayPreview() {
   };
 
   const refStyle = (scaleMult = 1.0): React.CSSProperties => {
-    const base      = (typography?.fontSize || 56) * 0.52;
-    const autoMult  = (typography?.autoScale && verse)
+    if (!typography) return {};
+    // Use configuredRefSize if set (> 0), otherwise fall back to 52% of main
+    const autoBase = (typography.fontSize || 56) * 0.52;
+    const refBase  = (typography.refFontSize && typography.refFontSize > 0)
+      ? typography.refFontSize
+      : autoBase;
+    const autoMult = (typography.autoScale && verse)
       ? computeAutoScale(verse.text, verse.textEnglish, language)
       : 1.0;
+    // Use refFontWeight if set, otherwise fall back to main fontWeight
+    const weightKey = typography.refFontWeight || typography.fontWeight || 'bold';
+    const cssWeight = FONT_WEIGHT_MAP[weightKey] ?? weightKey;
     return {
-      fontSize:   clampSize(base * autoMult * scaleMult),
-      color:      typography?.textColor || '#fff',
-      fontFamily: typography?.fontFamily ? `"${typography.fontFamily}", sans-serif` : 'inherit',
-      textAlign:  (typography?.textAlign as React.CSSProperties['textAlign']) || 'center',
+      fontSize:   clampSize(refBase * autoMult * scaleMult),
+      color:      typography.textColor || '#fff',
+      fontFamily: typography.fontFamily ? `"${typography.fontFamily}", sans-serif` : 'inherit',
+      textAlign:  (typography.textAlign as React.CSSProperties['textAlign']) || 'center',
+      fontWeight: cssWeight,
     };
   };
 

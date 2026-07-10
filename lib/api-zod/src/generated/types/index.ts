@@ -27,6 +27,7 @@ export * from './transition';
 export * from './transitionType';
 export * from './typography';
 export * from './typographyFontWeight';
+export * from './typographyRefFontWeight';
 export * from './typographyTextAlign';
 export * from './verse';
 export * from './verseDetail';

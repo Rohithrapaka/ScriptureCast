@@ -14,6 +14,8 @@ export const defaultTypography: Typography = {
   outlineWidth: 2,
   showReference: true,
   autoScale: true,
+  refFontSize: 0,
+  refFontWeight: 'regular',
 };
 
 export const defaultBackground: Background = {

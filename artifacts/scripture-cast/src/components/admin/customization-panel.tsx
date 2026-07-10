@@ -8,20 +8,31 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, ImageIcon, X } from 'lucide-react';
+import { Upload, ImageIcon, X, Info } from 'lucide-react';
 import type { Typography, Background, Transition } from '@workspace/api-client-react';
 
 // ── Telugu font catalog ───────────────────────────────────────────────────────
 
 const TELUGU_FONTS = [
-  { label: 'Modern',         font: 'Noto Sans Telugu',  sample: 'నమస్కారం' },
-  { label: 'Classic Serif',  font: 'Noto Serif Telugu', sample: 'నమస్కారం' },
-  { label: 'Clean',          font: 'Mandali',           sample: 'నమస్కారం' },
-  { label: 'Bold Display',   font: 'Ramabhadra',        sample: 'నమస్కారం' },
-  { label: 'Elegant',        font: 'Gurajada',          sample: 'నమస్కారం' },
-  { label: 'Traditional',    font: 'Suranna',           sample: 'నమస్కారం' },
-  { label: 'Readable',       font: 'Mallanna',          sample: 'నమస్కారం' },
-  { label: 'Decorative',     font: 'Ponnala',           sample: 'నమస్కారం' },
+  { label: 'Modern',         font: 'Noto Sans Telugu',  sample: 'నమస్కారం', multiWeight: true  },
+  { label: 'Classic Serif',  font: 'Noto Serif Telugu', sample: 'నమస్కారం', multiWeight: true  },
+  { label: 'Clean',          font: 'Mandali',           sample: 'నమస్కారం', multiWeight: false },
+  { label: 'Bold Display',   font: 'Ramabhadra',        sample: 'నమస్కారం', multiWeight: false },
+  { label: 'Elegant',        font: 'Gurajada',          sample: 'నమస్కారం', multiWeight: false },
+  { label: 'Traditional',    font: 'Suranna',           sample: 'నమస్కారం', multiWeight: false },
+  { label: 'Readable',       font: 'Mallanna',          sample: 'నమస్కారం', multiWeight: false },
+  { label: 'Decorative',     font: 'Ponnala',           sample: 'నమస్కారం', multiWeight: false },
+] as const;
+
+const MULTI_WEIGHT_FONT_NAMES = new Set<string>(
+  TELUGU_FONTS.filter((f) => f.multiWeight).map((f) => f.font)
+);
+
+const WEIGHT_OPTIONS = [
+  { value: 'light',   label: 'Light'   },
+  { value: 'regular', label: 'Regular' },
+  { value: 'medium',  label: 'Medium'  },
+  { value: 'bold',    label: 'Bold'    },
 ] as const;
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -30,6 +41,9 @@ export function CustomizationPanel() {
   const store = usePresentationStore();
   const { mutate: updateState } = useUpdatePresentationState();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const currentFont     = store.typography?.fontFamily ?? 'Noto Sans Telugu';
+  const isMultiWeight   = MULTI_WEIGHT_FONT_NAMES.has(currentFont);
 
   // ── Broadcast helpers ────────────────────────────────────────────────────
 
@@ -113,6 +127,9 @@ export function CustomizationPanel() {
 
   const currentLang   = store.language   ?? 'telugu';
   const currentLayout = store.layout     ?? 'stack';
+  const showRef       = store.typography?.showReference ?? true;
+  const refSize       = store.typography?.refFontSize   ?? 0;
+  const refWeight     = store.typography?.refFontWeight ?? 'regular';
 
   return (
     <div className="flex flex-col h-full bg-card border-l border-border overflow-hidden">
@@ -155,7 +172,6 @@ export function CustomizationPanel() {
                           : 'border-border hover:border-primary/50 hover:bg-muted/40 text-muted-foreground',
                       ].join(' ')}
                     >
-                      {/* Mini diagram */}
                       <div className="flex flex-col gap-0.5 w-full px-1">
                         {opt === 'stack' ? (
                           <>
@@ -241,20 +257,36 @@ export function CustomizationPanel() {
                 />
               </div>
 
+              {/* Font weight — with note for single-weight fonts */}
               <div className="space-y-2">
-                <Label>Font Weight</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Font Weight</Label>
+                  {!isMultiWeight && (
+                    <span className="flex items-center gap-1 text-xs text-amber-400">
+                      <Info className="h-3 w-3" />
+                      Single weight only
+                    </span>
+                  )}
+                </div>
                 <Select
                   value={store.typography?.fontWeight}
                   onValueChange={(v) => updateTypography('fontWeight', v)}
+                  disabled={!isMultiWeight}
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className={!isMultiWeight ? 'opacity-50' : ''}>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="regular">Regular</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="bold">Bold</SelectItem>
+                    {WEIGHT_OPTIONS.map(({ value, label }) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                {!isMultiWeight && (
+                  <p className="text-xs text-muted-foreground">
+                    Switch to Noto Sans Telugu or Noto Serif Telugu for variable weight support.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -339,14 +371,66 @@ export function CustomizationPanel() {
                 </div>
               )}
 
+              {/* ── Show Reference toggle + conditional ref controls ── */}
               <div className="flex items-center justify-between pt-1">
-                <Label htmlFor="ref-toggle">Show Reference</Label>
+                <div>
+                  <Label htmlFor="ref-toggle">Show Reference</Label>
+                  <p className="text-xs text-muted-foreground">e.g. యోహాను 3:16</p>
+                </div>
                 <Switch
                   id="ref-toggle"
-                  checked={store.typography?.showReference}
+                  checked={showRef}
                   onCheckedChange={(v) => updateTypography('showReference', v)}
                 />
               </div>
+
+              {showRef && (
+                <div className="space-y-4 pl-4 border-l-2 border-primary/30">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">
+                    Reference Styling
+                  </p>
+
+                  {/* Reference font size */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label className="text-muted-foreground text-sm">Size</Label>
+                      <span className="text-xs text-muted-foreground">
+                        {refSize > 0 ? `${refSize}px` : 'Auto'}
+                      </span>
+                    </div>
+                    <Slider
+                      min={0} max={80} step={2}
+                      value={[refSize]}
+                      onValueChange={([v]) => updateTypography('refFontSize', v)}
+                    />
+                    <p className="text-xs text-muted-foreground">0 = auto (≈52% of main size)</p>
+                  </div>
+
+                  {/* Reference font weight */}
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground text-sm">Weight</Label>
+                    <Select
+                      value={refWeight}
+                      onValueChange={(v) => updateTypography('refFontWeight', v)}
+                      disabled={!isMultiWeight}
+                    >
+                      <SelectTrigger className={!isMultiWeight ? 'opacity-50' : ''}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {WEIGHT_OPTIONS.map(({ value, label }) => (
+                          <SelectItem key={value} value={value}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {!isMultiWeight && (
+                      <p className="text-xs text-muted-foreground">
+                        Requires Noto Sans or Noto Serif Telugu.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </TabsContent>
 
             {/* ── Background ── */}
