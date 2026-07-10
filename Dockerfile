@@ -4,7 +4,7 @@ FROM node:24-alpine AS builder
 WORKDIR /app
 
 # Enable pnpm via corepack (bundled with Node ≥ 16)
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@10 --activate
 
 # Copy workspace configuration first (better layer caching)
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
