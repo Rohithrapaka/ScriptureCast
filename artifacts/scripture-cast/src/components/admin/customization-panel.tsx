@@ -14,14 +14,22 @@ import type { Typography, Background, Transition } from '@workspace/api-client-r
 // ── Telugu font catalog ───────────────────────────────────────────────────────
 
 const TELUGU_FONTS = [
-  { label: 'Modern',         font: 'Noto Sans Telugu',  sample: 'నమస్కారం', multiWeight: true  },
-  { label: 'Classic Serif',  font: 'Noto Serif Telugu', sample: 'నమస్కారం', multiWeight: true  },
-  { label: 'Clean',          font: 'Mandali',           sample: 'నమస్కారం', multiWeight: false },
-  { label: 'Bold Display',   font: 'Ramabhadra',        sample: 'నమస్కారం', multiWeight: false },
-  { label: 'Elegant',        font: 'Gurajada',          sample: 'నమస్కారం', multiWeight: false },
-  { label: 'Traditional',    font: 'Suranna',           sample: 'నమస్కారం', multiWeight: false },
-  { label: 'Readable',       font: 'Mallanna',          sample: 'నమస్కారం', multiWeight: false },
-  { label: 'Decorative',     font: 'Ponnala',           sample: 'నమస్కారం', multiWeight: false },
+  { label: 'Modern',            font: 'Noto Sans Telugu',    sample: 'నమస్కారం', multiWeight: true  },
+  { label: 'Classic Serif',     font: 'Noto Serif Telugu',   sample: 'నమస్కారం', multiWeight: true  },
+  { label: 'Rounded',           font: 'Baloo Tammudu 2',     sample: 'నమస్కారం', multiWeight: true  },
+  { label: 'Clean',             font: 'Mandali',             sample: 'నమస్కారం', multiWeight: false },
+  { label: 'Readable',         font: 'Mallanna',            sample: 'నమస్కారం', multiWeight: false },
+  { label: 'Slim',              font: 'NTR',                 sample: 'నమస్కారం', multiWeight: false },
+  { label: 'Light & Airy',      font: 'Gidugu',              sample: 'నమస్కారం', multiWeight: false },
+  { label: 'Script',            font: 'Vaza',                sample: 'నమస్కారం', multiWeight: false },
+  { label: 'Bold Display',      font: 'Ramabhadra',          sample: 'నమస్కారం', multiWeight: false },
+  { label: 'Elegant',           font: 'Gurajada',            sample: 'నమస్కారం', multiWeight: false },
+  { label: 'Traditional',       font: 'Suranna',             sample: 'నమస్కారం', multiWeight: false },
+  { label: 'Calligraphic',      font: 'Ramaraja',            sample: 'నమస్కారం', multiWeight: false },
+  { label: 'Decorative',        font: 'Ponnala',             sample: 'నమస్కారం', multiWeight: false },
+  { label: 'Vintage',           font: 'Tenali Ramakrishna',  sample: 'నమస్కారం', multiWeight: false },
+  { label: 'Condensed',         font: 'Dhurjati',            sample: 'నమస్కారం', multiWeight: false },
+  { label: 'Handwritten',       font: 'Timmana',             sample: 'నమస్కారం', multiWeight: false },
 ] as const;
 
 const MULTI_WEIGHT_FONT_NAMES = new Set<string>(
