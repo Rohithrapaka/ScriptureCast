@@ -8,33 +8,29 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, ImageIcon, X, Info } from 'lucide-react';
+import { Upload, ImageIcon, X } from 'lucide-react';
 import type { Typography, Background, Transition } from '@workspace/api-client-react';
 
 // ── Telugu font catalog ───────────────────────────────────────────────────────
 
 const TELUGU_FONTS = [
-  { label: 'Modern',            font: 'Noto Sans Telugu',    sample: 'నమస్కారం', multiWeight: true  },
-  { label: 'Classic Serif',     font: 'Noto Serif Telugu',   sample: 'నమస్కారం', multiWeight: true  },
-  { label: 'Rounded',           font: 'Baloo Tammudu 2',     sample: 'నమస్కారం', multiWeight: true  },
-  { label: 'Clean',             font: 'Mandali',             sample: 'నమస్కారం', multiWeight: false },
-  { label: 'Readable',         font: 'Mallanna',            sample: 'నమస్కారం', multiWeight: false },
-  { label: 'Slim',              font: 'NTR',                 sample: 'నమస్కారం', multiWeight: false },
-  { label: 'Light & Airy',      font: 'Gidugu',              sample: 'నమస్కారం', multiWeight: false },
-  { label: 'Script',            font: 'Vaza',                sample: 'నమస్కారం', multiWeight: false },
-  { label: 'Bold Display',      font: 'Ramabhadra',          sample: 'నమస్కారం', multiWeight: false },
-  { label: 'Elegant',           font: 'Gurajada',            sample: 'నమస్కారం', multiWeight: false },
-  { label: 'Traditional',       font: 'Suranna',             sample: 'నమస్కారం', multiWeight: false },
-  { label: 'Calligraphic',      font: 'Ramaraja',            sample: 'నమస్కారం', multiWeight: false },
-  { label: 'Decorative',        font: 'Ponnala',             sample: 'నమస్కారం', multiWeight: false },
-  { label: 'Vintage',           font: 'Tenali Ramakrishna',  sample: 'నమస్కారం', multiWeight: false },
-  { label: 'Condensed',         font: 'Dhurjati',            sample: 'నమస్కారం', multiWeight: false },
-  { label: 'Handwritten',       font: 'Timmana',             sample: 'నమస్కారం', multiWeight: false },
+  { label: 'Modern',            font: 'Noto Sans Telugu',    sample: 'నమస్కారం' },
+  { label: 'Classic Serif',     font: 'Noto Serif Telugu',   sample: 'నమస్కారం' },
+  { label: 'Rounded',           font: 'Baloo Tammudu 2',     sample: 'నమస్కారం' },
+  { label: 'Clean',             font: 'Mandali',             sample: 'నమస్కారం' },
+  { label: 'Readable',          font: 'Mallanna',            sample: 'నమస్కారం' },
+  { label: 'Slim',              font: 'NTR',                 sample: 'నమస్కారం' },
+  { label: 'Light & Airy',      font: 'Gidugu',              sample: 'నమస్కారం' },
+  { label: 'Script',            font: 'Vaza',                sample: 'నమస్కారం' },
+  { label: 'Bold Display',      font: 'Ramabhadra',          sample: 'నమస్కారం' },
+  { label: 'Elegant',           font: 'Gurajada',            sample: 'నమస్కారం' },
+  { label: 'Traditional',       font: 'Suranna',             sample: 'నమస్కారం' },
+  { label: 'Calligraphic',      font: 'Ramaraja',            sample: 'నమస్కారం' },
+  { label: 'Decorative',        font: 'Ponnala',             sample: 'నమస్కారం' },
+  { label: 'Vintage',           font: 'Tenali Ramakrishna',  sample: 'నమస్కారం' },
+  { label: 'Condensed',         font: 'Dhurjati',            sample: 'నమస్కారం' },
+  { label: 'Handwritten',       font: 'Timmana',             sample: 'నమస్కారం' },
 ] as const;
-
-const MULTI_WEIGHT_FONT_NAMES = new Set<string>(
-  TELUGU_FONTS.filter((f) => f.multiWeight).map((f) => f.font)
-);
 
 const WEIGHT_OPTIONS = [
   { value: 'light',   label: 'Light'   },
@@ -50,8 +46,7 @@ export function CustomizationPanel() {
   const { mutate: updateState } = useUpdatePresentationState();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const currentFont     = store.typography?.fontFamily ?? 'Noto Sans Telugu';
-  const isMultiWeight   = MULTI_WEIGHT_FONT_NAMES.has(currentFont);
+  const currentFont = store.typography?.fontFamily ?? 'Noto Sans Telugu';
 
   // ── Broadcast helpers ────────────────────────────────────────────────────
 
@@ -219,7 +214,7 @@ export function CustomizationPanel() {
                   onValueChange={(v) => updateTypography('fontFamily', v)}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-72 overflow-y-auto">
                     {TELUGU_FONTS.map(({ label, font, sample }) => (
                       <SelectItem key={font} value={font}>
                         <div className="flex items-center gap-2">
@@ -265,36 +260,20 @@ export function CustomizationPanel() {
                 />
               </div>
 
-              {/* Font weight — with note for single-weight fonts */}
+              {/* Font weight */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Font Weight</Label>
-                  {!isMultiWeight && (
-                    <span className="flex items-center gap-1 text-xs text-amber-400">
-                      <Info className="h-3 w-3" />
-                      Single weight only
-                    </span>
-                  )}
-                </div>
+                <Label>Font Weight</Label>
                 <Select
                   value={store.typography?.fontWeight}
                   onValueChange={(v) => updateTypography('fontWeight', v)}
-                  disabled={!isMultiWeight}
                 >
-                  <SelectTrigger className={!isMultiWeight ? 'opacity-50' : ''}>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {WEIGHT_OPTIONS.map(({ value, label }) => (
                       <SelectItem key={value} value={value}>{label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {!isMultiWeight && (
-                  <p className="text-xs text-muted-foreground">
-                    Switch to Noto Sans Telugu or Noto Serif Telugu for variable weight support.
-                  </p>
-                )}
               </div>
 
               <div className="space-y-2">
@@ -420,22 +399,14 @@ export function CustomizationPanel() {
                     <Select
                       value={refWeight}
                       onValueChange={(v) => updateTypography('refFontWeight', v)}
-                      disabled={!isMultiWeight}
                     >
-                      <SelectTrigger className={!isMultiWeight ? 'opacity-50' : ''}>
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {WEIGHT_OPTIONS.map(({ value, label }) => (
                           <SelectItem key={value} value={value}>{label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    {!isMultiWeight && (
-                      <p className="text-xs text-muted-foreground">
-                        Requires Noto Sans or Noto Serif Telugu.
-                      </p>
-                    )}
                   </div>
                 </div>
               )}
