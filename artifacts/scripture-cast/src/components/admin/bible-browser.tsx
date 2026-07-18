@@ -6,6 +6,7 @@ import {
   useUpdatePresentationState
 } from '@workspace/api-client-react';
 import { usePresentationStore } from '@/hooks/use-presentation-store';
+import { useRecentVerses } from '@/hooks/use-recent-verses';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Loader2, ChevronLeft, ArrowRight, BookOpen } from 'lucide-react';
@@ -25,16 +26,16 @@ type PendingVerse = 'first' | 'last' | null;
 
 export function BibleBrowser() {
   // Navigation state
-  const [selectedBookId, setSelectedBookId]         = useState<string>('');
-  const [selectedChapter, setSelectedChapter]       = useState<number>(0);
+  const [selectedBookId, setSelectedBookId]           = useState<string>('');
+  const [selectedChapter, setSelectedChapter]         = useState<number>(0);
   const [selectedVerseNumber, setSelectedVerseNumber] = useState<number>(0);
-  const [pendingVerse, setPendingVerse]             = useState<PendingVerse>(null);
+  const [pendingVerse, setPendingVerse]               = useState<PendingVerse>(null);
 
   // Search / dropdown state
-  const [searchQuery, setSearchQuery]               = useState('');
-  const [showDropdown, setShowDropdown]             = useState(false);
+  const [searchQuery, setSearchQuery]                 = useState('');
+  const [showDropdown, setShowDropdown]               = useState(false);
   const [dropdownActiveIndex, setDropdownActiveIndex] = useState(-1);
-  const [isNavigating, setIsNavigating]             = useState(false);
+  const [isNavigating, setIsNavigating]               = useState(false);
 
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
@@ -48,10 +49,13 @@ export function BibleBrowser() {
   const background           = usePresentationStore((s) => s.background);
   const transition           = usePresentationStore((s) => s.transition);
 
+  // Recent verses (history) — only addVerse is used here
+  const { addVerse } = useRecentVerses();
+
   // Data
-  const { data: books,   isLoading: booksLoading }   = useListBooks();
+  const { data: books,    isLoading: booksLoading    } = useListBooks();
   const { data: chapters, isLoading: chaptersLoading } = useListChapters(selectedBookId);
-  const { data: verses,   isLoading: versesLoading }   = useListVerses(selectedBookId, selectedChapter);
+  const { data: verses,   isLoading: versesLoading   } = useListVerses(selectedBookId, selectedChapter);
   const { mutate: updateState } = useUpdatePresentationState();
 
   // ── Core present helper ──────────────────────────────────────────────────
@@ -70,13 +74,13 @@ export function BibleBrowser() {
     const englishName = book?.englishName ?? bookId;
     const detail = {
       bookId,
-      bookName:        book?.name ?? bookId,
+      bookName:         book?.name ?? bookId,
       englishName,
       chapter,
-      verse:           verseNum,
+      verse:            verseNum,
       text,
       textEnglish,
-      reference:       `${book?.name ?? bookId} ${chapter}:${verseNum}`,
+      reference:        `${book?.name ?? bookId} ${chapter}:${verseNum}`,
       referenceEnglish: `${englishName} ${chapter}:${verseNum}`,
     };
     const s = usePresentationStore.getState();
@@ -90,6 +94,8 @@ export function BibleBrowser() {
   }
 
   // ── Sync stable handler ref after every render ───────────────────────────
+  // NOTE: goNext / goPrev are SEQUENTIAL_NAVIGATION — they intentionally do
+  // NOT call addVerse so Recent Verses history stays clean.
 
   useEffect(() => {
     handlerRef.current.goNext = () => {
@@ -140,14 +146,38 @@ export function BibleBrowser() {
       switch (e.key) {
         case ' ':
           e.preventDefault();
+          // SEQUENTIAL_NAVIGATION — no history entry
           if (e.shiftKey) handlerRef.current.goPrev(); else handlerRef.current.goNext();
           break;
-        case 'ArrowRight': case 'ArrowDown': e.preventDefault(); handlerRef.current.goNext(); break;
-        case 'ArrowLeft':  case 'ArrowUp':   e.preventDefault(); handlerRef.current.goPrev(); break;
+        case 'ArrowRight': case 'ArrowDown':
+          e.preventDefault();
+          // SEQUENTIAL_NAVIGATION — no history entry
+          handlerRef.current.goNext();
+          break;
+        case 'ArrowLeft': case 'ArrowUp':
+          e.preventDefault();
+          // SEQUENTIAL_NAVIGATION — no history entry
+          handlerRef.current.goPrev();
+          break;
       }
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  // ── External navigate signal (from Recent Verses) ────────────────────────
+  // Syncs the browser's internal state when a history chip is clicked.
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { bookId, chapter, verse } = (e as CustomEvent<{ bookId: string; chapter: number; verse: number }>).detail;
+      setSelectedBookId(bookId);
+      setSelectedChapter(chapter);
+      setSelectedVerseNumber(verse);
+      setPendingVerse(null);
+    };
+    window.addEventListener('scripture-cast:navigate', handler);
+    return () => window.removeEventListener('scripture-cast:navigate', handler);
   }, []);
 
   // ── Auto-scroll active verse ─────────────────────────────────────────────
@@ -197,9 +227,24 @@ export function BibleBrowser() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
+  // MANUAL_SELECTION — clicking a verse in the list → add to history
   const handleVerseClick = (verseNum: number) => {
     setSelectedVerseNumber(verseNum);
     doPresent(verseNum, verses);
+
+    // Add to Recent Verses
+    const book = books?.find((b) => b.id === selectedBookId);
+    if (book) {
+      addVerse({
+        bookId:           selectedBookId,
+        bookName:         book.name,
+        englishName:      book.englishName ?? selectedBookId,
+        chapter:          selectedChapter,
+        verse:            verseNum,
+        reference:        `${book.name} ${selectedChapter}:${verseNum}`,
+        referenceEnglish: `${book.englishName ?? selectedBookId} ${selectedChapter}:${verseNum}`,
+      });
+    }
   };
 
   const handleBookSelect = (entry: BookEntry) => {
@@ -211,6 +256,7 @@ export function BibleBrowser() {
     setDropdownActiveIndex(-1);
   };
 
+  // MANUAL_SELECTION — typing a reference and selecting → add to history
   const handleReferenceSelect = async (ref: ReferenceMatch) => {
     setShowDropdown(false);
     setSearchQuery('');
@@ -247,6 +293,17 @@ export function BibleBrowser() {
           };
           setPresentationState(newState);
           updateState({ data: newState });
+
+          // Add to Recent Verses (MANUAL_SELECTION via search)
+          addVerse({
+            bookId:           ref.book.id,
+            bookName:         ref.book.teluguName,
+            englishName,
+            chapter:          ref.chapter,
+            verse:            ref.verse,
+            reference:        `${ref.book.teluguName} ${ref.chapter}:${ref.verse}`,
+            referenceEnglish: `${englishName} ${ref.chapter}:${ref.verse}`,
+          });
         }
       } finally {
         setIsNavigating(false);
@@ -283,7 +340,7 @@ export function BibleBrowser() {
     }
   };
 
-  const selectedBook   = books?.find((b) => b.id === selectedBookId);
+  const selectedBook     = books?.find((b) => b.id === selectedBookId);
   const selectedBookName = selectedBook?.name ?? '';
 
   function suggestionCls(index: number, extra = '') {

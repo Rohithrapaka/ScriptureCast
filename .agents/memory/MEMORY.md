@@ -1,2 +1,4 @@
 - [ScriptureCast bible data layer](bible-data-layer.md) — KJV and Telugu both load from disk; Telugu IDs are Telugu names; English names + textEnglish returned alongside Telugu in all verse API responses.
 - [ScriptureCast font loading](font-loading.md) — 8 Telugu Google Fonts loaded in index.html; auto-scale multiplier in display.tsx keyed on char count thresholds.
+- [Recent Verses navigation signal](recent-verses-nav.md) — BibleBrowser syncs state via custom DOM event `scripture-cast:navigate`; never use Zustand for this cross-component signal.
+- [Font weight mapping](font-weight-mapping.md) — fontWeight store values are strings (light/regular/medium/bold); must map to CSS numbers (300/400/500/700) in display.tsx before applying to style.

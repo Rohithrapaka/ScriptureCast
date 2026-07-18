@@ -5,6 +5,7 @@ import { useUpdatePresentationState } from '@workspace/api-client-react';
 import { BibleBrowser } from '@/components/admin/bible-browser';
 import { CustomizationPanel } from '@/components/admin/customization-panel';
 import { PreviewPanel } from '@/components/admin/preview-panel';
+import { RecentVerses } from '@/components/admin/recent-verses';
 import { BookOpen, Monitor, Settings } from 'lucide-react';
 
 type MobileTab = 'bible' | 'preview' | 'settings';
@@ -26,14 +27,8 @@ export default function AdminPage() {
     if (startedRef.current) return;
     startedRef.current = true;
 
-    // 1. Rehydrate persisted settings (typography, background, transition) from
-    //    localStorage.  skipHydration: true in the store means this ONLY runs
-    //    when explicitly called — the Display page never touches this data.
     usePresentationStore.persist.rehydrate();
 
-    // 2. After hydration is synchronous, push the restored settings to the
-    //    server so the display screen picks them up immediately on connect.
-    //    Use a short timeout to let the rehydrated state settle in React.
     setTimeout(() => {
       const s = usePresentationStore.getState();
       updateState({
@@ -50,7 +45,6 @@ export default function AdminPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Enforce dark mode — admin is a broadcast control room
   useEffect(() => {
     document.documentElement.classList.add('dark');
   }, []);
@@ -64,8 +58,12 @@ export default function AdminPage() {
           <BibleBrowser />
         </aside>
 
-        <main className="flex-1 h-full min-w-[400px]">
-          <PreviewPanel />
+        {/* Center column: Preview + Recent Verses stacked */}
+        <main className="flex-1 min-h-0 min-w-[400px] flex flex-col overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <PreviewPanel />
+          </div>
+          <RecentVerses />
         </main>
 
         <aside className="w-1/4 min-w-[300px] h-full flex-shrink-0">
@@ -84,8 +82,10 @@ export default function AdminPage() {
         </div>
 
         {/* Bottom navigation tabs */}
-        <nav className="flex-shrink-0 flex items-stretch border-t border-border bg-card safe-area-pb"
-             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <nav
+          className="relative flex-shrink-0 flex items-stretch border-t border-border bg-card"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
           {MOBILE_TABS.map(({ id, label, Icon }) => {
             const active = mobileTab === id;
             return (
@@ -113,12 +113,15 @@ export default function AdminPage() {
   );
 }
 
-// ── Mobile wrappers — strip the sidebar chrome, let components scroll ────────
+// ── Mobile wrappers ───────────────────────────────────────────────────────────
 
 function MobilePreview() {
   return (
-    <div className="h-full overflow-hidden">
-      <PreviewPanel />
+    <div className="h-full flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <PreviewPanel />
+      </div>
+      <RecentVerses />
     </div>
   );
 }
