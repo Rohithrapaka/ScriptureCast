@@ -10,6 +10,7 @@ const port = Number(process.env.PORT || "5173");
 // BASE_PATH controls the Vite `base` option.  Default to "/" for standard
 // single-origin deployments (Render, Railway, Docker, VPS, etc.).
 const basePath = process.env.BASE_PATH || "/";
+const apiTarget = process.env.VITE_API_TARGET || "http://127.0.0.1:3000";
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -51,11 +52,22 @@ export default defineConfig({
   },
   server: {
     port,
-    strictPort: true,
+    strictPort: false,
     host: "0.0.0.0",
     allowedHosts: true,
     fs: {
       strict: true,
+    },
+    proxy: {
+      "/api": {
+        target: apiTarget,
+        changeOrigin: true,
+      },
+      "/socket.io": {
+        target: apiTarget,
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
   preview: {
