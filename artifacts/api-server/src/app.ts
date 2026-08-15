@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import path from "path";
 import fs from "fs";
@@ -28,6 +29,7 @@ app.use(
   }),
 );
 app.use(cors());
+app.use(cookieParser());           // Populate req.cookies for auth token reads
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
