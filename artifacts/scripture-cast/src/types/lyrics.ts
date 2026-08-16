@@ -19,6 +19,7 @@ export interface Song {
   bpm: number | null;
   category: string;
   tags: string[];
+  language?: string; // e.g., "english", "telugu", "hindi", "tamil", "malayalam", "kannada"
   defaultThemeId: string | null;
   createdAt: string | Date;
   updatedAt: string | Date;

@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useLyricsStudioStore } from '@/hooks/use-lyrics-studio-store';
+import { useResizablePanels } from '@/hooks/use-resizable-panels';
 import { SongListPanel } from '@/components/lyrics/song-list-panel';
 import { VisualCanvasEditor } from '@/components/lyrics/visual-canvas-editor';
 import { LyricPropertyInspector } from '@/components/lyrics/lyric-property-inspector';
+import { Splitter } from '@/components/ui/splitter';
 import { Button } from '@/components/ui/button';
 import { Typography } from '@/components/ui/typography';
 import { Music, BookOpen, ExternalLink, Settings2, SlidersHorizontal, List } from 'lucide-react';
@@ -15,6 +17,16 @@ interface LyricsStudioViewProps {
 export function LyricsStudioView({ onSwitchToBible }: LyricsStudioViewProps) {
   const { setSongs, selectedSongId } = useLyricsStudioStore();
   const [mobileTab, setMobileTab] = useState<'songs' | 'canvas' | 'inspector'>('canvas');
+  const {
+    sizes,
+    isResizing,
+    handleLeftDragStart,
+    handleLeftDragEnd,
+    handleLeftDrag,
+    handleRightDragStart,
+    handleRightDragEnd,
+    handleRightDrag,
+  } = useResizablePanels();
 
   // Load songs on mount
   useEffect(() => {
@@ -104,25 +116,43 @@ export function LyricsStudioView({ onSwitchToBible }: LyricsStudioViewProps) {
       </header>
 
       {/* ── Desktop 3-Column Studio Workspace ─────────────────────────── */}
-      <div className="hidden lg:flex flex-1 min-h-0 overflow-hidden">
+      <div className={`hidden lg:flex flex-1 min-h-0 overflow-hidden ${isResizing ? 'select-none' : ''}`}>
         {/* Left: Song Library & Slide List */}
-        <aside className="w-80 h-full shrink-0">
+        <div style={{ width: `${sizes.leftWidth}px`, minWidth: '250px' }} className="h-full shrink-0 overflow-hidden">
           <SongListPanel
             onSongCreated={handleSongCreated}
             onSongUpdated={handleSongUpdated}
             onSongDeleted={handleSongDeleted}
           />
-        </aside>
+        </div>
+
+        {/* Left Splitter */}
+        <Splitter
+          onDragStart={handleLeftDragStart}
+          onDragEnd={handleLeftDragEnd}
+          onDrag={handleLeftDrag}
+          orientation="vertical"
+          isDragging={isResizing}
+        />
 
         {/* Center: Visual 16:9 Canvas Stage Editor */}
         <main className="flex-1 h-full min-w-0">
           <VisualCanvasEditor />
         </main>
 
+        {/* Right Splitter */}
+        <Splitter
+          onDragStart={handleRightDragStart}
+          onDragEnd={handleRightDragEnd}
+          onDrag={handleRightDrag}
+          orientation="vertical"
+          isDragging={isResizing}
+        />
+
         {/* Right: Typography & Property Inspector */}
-        <aside className="w-80 h-full shrink-0">
+        <div style={{ width: `${sizes.rightWidth}px`, minWidth: '250px' }} className="h-full shrink-0 overflow-hidden">
           <LyricPropertyInspector />
-        </aside>
+        </div>
       </div>
 
       {/* ── Mobile Layout with Tab Switching ──────────────────────────── */}

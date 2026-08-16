@@ -45,7 +45,7 @@ export interface Typography {
 }
 
 export interface Background {
-  type: "solid" | "gradient" | "image";
+  type: "solid" | "gradient" | "image" | "transparent";
   color: string;
   gradientStart: string;
   gradientEnd: string;

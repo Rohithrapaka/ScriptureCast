@@ -41,7 +41,9 @@ export type Typography = ApiTypography & {
   letterSpacing?: number;
 };
 
-export type Background = ApiBackground;
+export type Background = ApiBackground & {
+  type?: 'solid' | 'gradient' | 'image' | 'transparent';
+};
 
 export type Transition = ApiTransition & {
   type?: any;

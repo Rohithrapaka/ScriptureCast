@@ -63,6 +63,8 @@ export function DisplayPreview() {
       return {
         backgroundImage: `linear-gradient(${background.gradientDirection || 'to bottom'}, ${background.gradientStart || '#000'}, ${background.gradientEnd || '#1a1a1a'})`,
       };
+    if (background.type === 'transparent')
+      return { backgroundColor: 'transparent', backgroundImage: 'none' };
     if (background.type === 'image' && background.imageUrl)
       return {
         backgroundImage:    `url(${background.imageUrl})`,

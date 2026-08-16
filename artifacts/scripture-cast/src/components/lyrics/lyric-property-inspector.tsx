@@ -2,6 +2,7 @@ import React from 'react';
 import { useLyricsStudioStore } from '@/hooks/use-lyrics-studio-store';
 import { Typography } from '@/components/ui/typography';
 import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
 import { ColorPicker } from '@/components/ui/color-picker';
 import { FormRow } from '@/components/ui/form-row';
 import { Switch } from '@/components/ui/switch';
@@ -103,13 +104,29 @@ export function LyricPropertyInspector() {
         </FormRow>
 
         <FormRow label={`Font Size (${activeSlideConfig.fontSize}px)`}>
-          <Slider
-            min={24}
-            max={96}
-            step={2}
-            value={[activeSlideConfig.fontSize]}
-            onValueChange={([val]) => updateActiveSlideConfig({ fontSize: val })}
-          />
+          <div className="flex items-center gap-2">
+            <Slider
+              min={24}
+              max={96}
+              step={2}
+              value={[activeSlideConfig.fontSize]}
+              onValueChange={([val]) => updateActiveSlideConfig({ fontSize: val })}
+              className="flex-1"
+            />
+            <Input
+              type="number"
+              min={24}
+              max={96}
+              value={activeSlideConfig.fontSize}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10);
+                if (!isNaN(val) && val >= 24 && val <= 96) {
+                  updateActiveSlideConfig({ fontSize: val });
+                }
+              }}
+              className="w-16 bg-neutral-800 border-neutral-700 text-white text-sm"
+            />
+          </div>
         </FormRow>
 
         <div className="grid grid-cols-2 gap-3">

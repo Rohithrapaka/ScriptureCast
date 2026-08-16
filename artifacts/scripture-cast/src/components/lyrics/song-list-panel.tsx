@@ -8,6 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { FormRow } from '@/components/ui/form-row';
 import { Badge } from '@/components/ui/badge';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Plus, Music, ListMusic, Trash2, Edit3, Layers } from 'lucide-react';
 import type { Song, SongSection } from '@/types/lyrics';
 
@@ -34,6 +41,7 @@ export function SongListPanel({ onSongCreated, onSongUpdated, onSongDeleted }: S
   // New song state
   const [newTitle, setNewTitle] = useState('');
   const [newArtist, setNewArtist] = useState('');
+  const [newLanguage, setNewLanguage] = useState('english');
   const [newLyrics, setNewLyrics] = useState('');
 
   // New section state
@@ -60,6 +68,7 @@ export function SongListPanel({ onSongCreated, onSongUpdated, onSongDeleted }: S
         body: JSON.stringify({
           title: newTitle.trim(),
           artistAuthor: newArtist.trim() || undefined,
+          language: newLanguage,
           sections: [
             {
               type: 'verse',
@@ -77,6 +86,7 @@ export function SongListPanel({ onSongCreated, onSongUpdated, onSongDeleted }: S
         }
         setNewTitle('');
         setNewArtist('');
+        setNewLanguage('english');
         setNewLyrics('');
         setIsAddModalOpen(false);
       }
@@ -177,13 +187,18 @@ export function SongListPanel({ onSongCreated, onSongUpdated, onSongDeleted }: S
                 className="p-3 cursor-pointer flex items-center justify-between group"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Typography variant="body" className="font-medium text-neutral-100 truncate">
                       {song.title}
                     </Typography>
                     {song.key && (
                       <Badge variant="outline" className="text-[10px] py-0 px-1 border-neutral-700 text-neutral-400">
                         {song.key}
+                      </Badge>
+                    )}
+                    {song.language && (
+                      <Badge className="text-[10px] py-0 px-1.5 bg-blue-600/30 text-blue-300 border-blue-600/50 border">
+                        {song.language}
                       </Badge>
                     )}
                   </div>
@@ -284,6 +299,22 @@ export function SongListPanel({ onSongCreated, onSongUpdated, onSongDeleted }: S
               value={newArtist}
               onChange={(e) => setNewArtist(e.target.value)}
             />
+          </FormRow>
+
+          <FormRow label="Language">
+            <Select value={newLanguage} onValueChange={setNewLanguage}>
+              <SelectTrigger className="bg-neutral-800 border-neutral-700 text-white">
+                <SelectValue placeholder="Select language" />
+              </SelectTrigger>
+              <SelectContent className="bg-neutral-900 border-neutral-800 text-white">
+                <SelectItem value="english">English</SelectItem>
+                <SelectItem value="telugu">Telugu</SelectItem>
+                <SelectItem value="hindi">Hindi</SelectItem>
+                <SelectItem value="tamil">Tamil</SelectItem>
+                <SelectItem value="malayalam">Malayalam</SelectItem>
+                <SelectItem value="kannada">Kannada</SelectItem>
+              </SelectContent>
+            </Select>
           </FormRow>
 
           <FormRow label="Verse 1 Lyrics" required helpText="Separate slide chunks with a blank line">

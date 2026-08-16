@@ -33,6 +33,7 @@ export const songsTable = pgTable("songs", {
   bpm: integer("bpm"),
   category: text("category").notNull().default("Worship"),
   tags: jsonb("tags").$type<string[]>().default([]),
+  language: text("language").default("english"), // e.g., "english", "telugu", "hindi", "tamil", "malayalam", "kannada"
   defaultThemeId: uuid("default_theme_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

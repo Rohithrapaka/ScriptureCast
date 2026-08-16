@@ -32,12 +32,19 @@ export function VisualCanvasEditor() {
   const presStore = usePresentationStore();
 
   const canvasRef = useRef<HTMLDivElement>(null);
+  const textElementRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeEdge, setResizeEdge] = useState<'left' | 'right' | null>(null);
   const [dragStart, setDragStart] = useState<{ x: number; y: number; initialX: number; initialY: number }>({
     x: 0,
     y: 0,
     initialX: 50,
     initialY: 50,
+  });
+  const [resizeStart, setResizeStart] = useState<{ x: number; initialWidth: number }>({
+    x: 0,
+    initialWidth: 85,
   });
 
   const activeSlide = slides.find((s) => s.id === selectedSlideId) || slides[0];
@@ -68,6 +75,7 @@ export function VisualCanvasEditor() {
 
   // Dragging handlers with percentage calculations
   const handleMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('[data-handle]')) return; // Don't drag if clicking resize handle
     e.preventDefault();
     setIsDragging(true);
     setDragStart({
@@ -78,22 +86,55 @@ export function VisualCanvasEditor() {
     });
   };
 
+  // Resize handle handlers
+  const handleResizeStart = (e: React.MouseEvent, edge: 'left' | 'right') => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+    setResizeEdge(edge);
+    setResizeStart({
+      x: e.clientX,
+      initialWidth: activeSlideConfig.width,
+    });
+  };
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging || !canvasRef.current) return;
+      if (!canvasRef.current) return;
 
       const rect = canvasRef.current.getBoundingClientRect();
-      const deltaX = e.clientX - dragStart.x;
-      const deltaY = e.clientY - dragStart.y;
 
-      // Convert pixel delta to percentage of canvas dimension
-      const deltaPercentX = (deltaX / rect.width) * 100;
-      const deltaPercentY = (deltaY / rect.height) * 100;
+      // Handle dragging
+      if (isDragging) {
+        const deltaX = e.clientX - dragStart.x;
+        const deltaY = e.clientY - dragStart.y;
 
-      const newX = Math.max(10, Math.min(90, Math.round(dragStart.initialX + deltaPercentX)));
-      const newY = Math.max(10, Math.min(90, Math.round(dragStart.initialY + deltaPercentY)));
+        // Convert pixel delta to percentage of canvas dimension
+        const deltaPercentX = (deltaX / rect.width) * 100;
+        const deltaPercentY = (deltaY / rect.height) * 100;
 
-      updateActiveSlideConfig({ x: newX, y: newY });
+        const newX = Math.max(10, Math.min(90, Math.round(dragStart.initialX + deltaPercentX)));
+        const newY = Math.max(10, Math.min(90, Math.round(dragStart.initialY + deltaPercentY)));
+
+        updateActiveSlideConfig({ x: newX, y: newY });
+      }
+
+      // Handle resizing
+      if (isResizing && resizeEdge) {
+        const deltaX = e.clientX - resizeStart.x;
+        const deltaPercentX = (deltaX / rect.width) * 100;
+        
+        let newWidth: number;
+        if (resizeEdge === 'right') {
+          // Dragging right edge right increases width
+          newWidth = Math.max(40, Math.min(95, Math.round(resizeStart.initialWidth + deltaPercentX)));
+        } else {
+          // Dragging left edge left increases width
+          newWidth = Math.max(40, Math.min(95, Math.round(resizeStart.initialWidth - deltaPercentX)));
+        }
+
+        updateActiveSlideConfig({ width: newWidth });
+      }
     };
 
     const handleMouseUp = () => {
@@ -104,9 +145,16 @@ export function VisualCanvasEditor() {
           broadcastCurrentSlide(true);
         }
       }
+      if (isResizing) {
+        setIsResizing(false);
+        // If live, update presentation display with new size
+        if (presStore.active && !presStore.cleared) {
+          broadcastCurrentSlide(true);
+        }
+      }
     };
 
-    if (isDragging) {
+    if (isDragging || isResizing) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
     }
@@ -115,7 +163,7 @@ export function VisualCanvasEditor() {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, dragStart, updateActiveSlideConfig, presStore.active, presStore.cleared]);
+  }, [isDragging, isResizing, dragStart, resizeStart, resizeEdge, updateActiveSlideConfig, presStore.active, presStore.cleared]);
 
   const handleToggleLive = () => {
     const isCurrentlyLive = presStore.active && !presStore.cleared;
@@ -253,10 +301,12 @@ export function VisualCanvasEditor() {
           {activeSlide ? (
             /* Draggable & Selectable Lyric Element */
             <div
+              ref={textElementRef}
               onMouseDown={handleMouseDown}
               className={`absolute cursor-move transition-shadow rounded-lg p-4 select-none ${
                 isDragging
                   ? 'ring-2 ring-amber-400 shadow-2xl bg-amber-500/5 cursor-grabbing'
+                  : isResizing ? 'ring-2 ring-green-400 shadow-2xl bg-green-500/5'
                   : 'hover:ring-1 hover:ring-amber-500/50 group'
               }`}
               style={{
@@ -271,6 +321,22 @@ export function VisualCanvasEditor() {
                 <Move className="w-3 h-3" />
                 <span>Drag to Position (X: {activeSlideConfig.x}%, Y: {activeSlideConfig.y}%)</span>
               </div>
+
+              {/* Left Resize Handle */}
+              <div
+                data-handle="left"
+                onMouseDown={(e) => handleResizeStart(e, 'left')}
+                className="absolute top-0 left-0 -translate-x-1/2 w-3 h-full cursor-col-resize hover:bg-green-500/40 active:bg-green-500/60 group/handle rounded-l-lg transition-colors"
+                title="Drag to resize width"
+              />
+
+              {/* Right Resize Handle */}
+              <div
+                data-handle="right"
+                onMouseDown={(e) => handleResizeStart(e, 'right')}
+                className="absolute top-0 right-0 translate-x-1/2 w-3 h-full cursor-col-resize hover:bg-green-500/40 active:bg-green-500/60 group/handle rounded-r-lg transition-colors"
+                title="Drag to resize width"
+              />
 
               {/* Primary Lyrics */}
               <div

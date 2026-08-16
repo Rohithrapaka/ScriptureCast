@@ -425,6 +425,7 @@ export function CustomizationPanel() {
                     <SelectItem value="solid">Solid Color</SelectItem>
                     <SelectItem value="gradient">Gradient</SelectItem>
                     <SelectItem value="image">Image</SelectItem>
+                    <SelectItem value="transparent">Transparent</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

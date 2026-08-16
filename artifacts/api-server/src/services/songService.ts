@@ -28,6 +28,7 @@ let inMemorySongs: Song[] = [
     bpm: 72,
     category: "Worship",
     tags: ["Worship", "Telugu"],
+    language: "telugu",
     defaultThemeId: null,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -41,6 +42,7 @@ let inMemorySongs: Song[] = [
     bpm: 68,
     category: "Hymn",
     tags: ["Hymn", "Classic"],
+    language: "english",
     defaultThemeId: null,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -110,6 +112,7 @@ export interface CreateSongInput {
   bpm?: number;
   category?: string;
   tags?: string[];
+  language?: string; // e.g., "english", "telugu", "hindi", "tamil", "malayalam", "kannada"
   sections?: {
     type: SongSectionType;
     sectionNumber?: number;
@@ -128,6 +131,7 @@ export interface UpdateSongInput {
   bpm?: number;
   category?: string;
   tags?: string[];
+  language?: string; // e.g., "english", "telugu", "hindi", "tamil", "malayalam", "kannada"
 }
 
 export interface CreateSectionInput {
@@ -211,6 +215,7 @@ export async function createSong(input: CreateSongInput): Promise<SongWithSectio
     bpm: input.bpm || null,
     category: input.category?.trim() || "Worship",
     tags: input.tags || [],
+    language: input.language || "english",
     defaultThemeId: null,
     createdAt: new Date(),
     updatedAt: new Date(),

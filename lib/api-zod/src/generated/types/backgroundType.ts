@@ -13,4 +13,5 @@ export const BackgroundType = {
   solid: 'solid',
   gradient: 'gradient',
   image: 'image',
+  transparent: 'transparent',
 } as const;
