@@ -62,7 +62,7 @@ router.post(
   authenticateToken,
   async (req: Request, res: Response) => {
     try {
-      const { title, originalTitle, artistAuthor, key, bpm, category, tags, sections } = req.body;
+      const { title, originalTitle, artistAuthor, key, bpm, category, tags, language, sections } = req.body;
       if (!title || !title.trim()) {
         res.status(400).json({ error: "Song title is required" });
         return;
@@ -75,6 +75,7 @@ router.post(
         bpm,
         category,
         tags,
+        language,
         sections,
       });
       res.status(201).json({ song });

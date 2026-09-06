@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLyricsStudioStore } from '@/hooks/use-lyrics-studio-store';
+import { usePresentationStore } from '@/hooks/use-presentation-store';
 import { Typography } from '@/components/ui/typography';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
@@ -25,7 +26,43 @@ import {
 import { SUPPORTED_FONTS, TRANSITION_TYPES } from '@/types/lyrics';
 
 export function LyricPropertyInspector() {
-  const { activeSlideConfig, updateActiveSlideConfig } = useLyricsStudioStore();
+  const { 
+    activeSlideConfig, 
+    updateActiveSlideConfig, 
+    slides, 
+    selectedSlideId, 
+    buildLyricPayload 
+  } = useLyricsStudioStore();
+  const presStore = usePresentationStore();
+
+  const handleConfigChange = (patch: Partial<typeof activeSlideConfig>) => {
+    updateActiveSlideConfig(patch);
+    if (presStore.active && !presStore.cleared) {
+      const activeSlide = slides.find((s) => s.id === selectedSlideId) || slides[0];
+      if (activeSlide) {
+        const payload = {
+          ...buildLyricPayload(activeSlide),
+          ...patch,
+        };
+        presStore.setPresentationState({
+          active: true,
+          cleared: false,
+          contentType: 'song',
+          lyric: payload,
+        });
+        fetch('/api/presentation/state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            active: true,
+            cleared: false,
+            contentType: 'song',
+            lyric: payload,
+          }),
+        }).catch(console.error);
+      }
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-neutral-900 border-l border-neutral-800 p-4 space-y-6 overflow-y-auto select-none">
@@ -53,7 +90,7 @@ export function LyricPropertyInspector() {
             max={90}
             step={1}
             value={[activeSlideConfig.x]}
-            onValueChange={([val]) => updateActiveSlideConfig({ x: val })}
+            onValueChange={([val]) => handleConfigChange({ x: val })}
           />
         </FormRow>
 
@@ -63,7 +100,7 @@ export function LyricPropertyInspector() {
             max={90}
             step={1}
             value={[activeSlideConfig.y]}
-            onValueChange={([val]) => updateActiveSlideConfig({ y: val })}
+            onValueChange={([val]) => handleConfigChange({ y: val })}
           />
         </FormRow>
 
@@ -73,7 +110,7 @@ export function LyricPropertyInspector() {
             max={95}
             step={1}
             value={[activeSlideConfig.width]}
-            onValueChange={([val]) => updateActiveSlideConfig({ width: val })}
+            onValueChange={([val]) => handleConfigChange({ width: val })}
           />
         </FormRow>
       </div>
@@ -88,7 +125,7 @@ export function LyricPropertyInspector() {
         <FormRow label="Font Family">
           <Select
             value={activeSlideConfig.fontFamily}
-            onValueChange={(val) => updateActiveSlideConfig({ fontFamily: val })}
+            onValueChange={(val) => handleConfigChange({ fontFamily: val })}
           >
             <SelectTrigger className="bg-neutral-800 border-neutral-700 text-white">
               <SelectValue placeholder="Choose font" />
@@ -110,7 +147,7 @@ export function LyricPropertyInspector() {
               max={96}
               step={2}
               value={[activeSlideConfig.fontSize]}
-              onValueChange={([val]) => updateActiveSlideConfig({ fontSize: val })}
+              onValueChange={([val]) => handleConfigChange({ fontSize: val })}
               className="flex-1"
             />
             <Input
@@ -121,7 +158,7 @@ export function LyricPropertyInspector() {
               onChange={(e) => {
                 const val = parseInt(e.target.value, 10);
                 if (!isNaN(val) && val >= 24 && val <= 96) {
-                  updateActiveSlideConfig({ fontSize: val });
+                  handleConfigChange({ fontSize: val });
                 }
               }}
               className="w-16 bg-neutral-800 border-neutral-700 text-white text-sm"
@@ -133,7 +170,7 @@ export function LyricPropertyInspector() {
           <FormRow label="Font Weight">
             <Select
               value={activeSlideConfig.fontWeight}
-              onValueChange={(val) => updateActiveSlideConfig({ fontWeight: val })}
+              onValueChange={(val) => handleConfigChange({ fontWeight: val })}
             >
               <SelectTrigger className="bg-neutral-800 border-neutral-700 text-white text-xs">
                 <SelectValue />
@@ -151,7 +188,7 @@ export function LyricPropertyInspector() {
             <div className="flex bg-neutral-800 border border-neutral-700 rounded-md p-0.5">
               <button
                 type="button"
-                onClick={() => updateActiveSlideConfig({ textAlign: 'left' })}
+                onClick={() => handleConfigChange({ textAlign: 'left' })}
                 className={`flex-1 py-1 flex items-center justify-center rounded ${
                   activeSlideConfig.textAlign === 'left' ? 'bg-amber-500 text-black' : 'text-neutral-400 hover:text-white'
                 }`}
@@ -160,7 +197,7 @@ export function LyricPropertyInspector() {
               </button>
               <button
                 type="button"
-                onClick={() => updateActiveSlideConfig({ textAlign: 'center' })}
+                onClick={() => handleConfigChange({ textAlign: 'center' })}
                 className={`flex-1 py-1 flex items-center justify-center rounded ${
                   activeSlideConfig.textAlign === 'center' ? 'bg-amber-500 text-black' : 'text-neutral-400 hover:text-white'
                 }`}
@@ -169,7 +206,7 @@ export function LyricPropertyInspector() {
               </button>
               <button
                 type="button"
-                onClick={() => updateActiveSlideConfig({ textAlign: 'right' })}
+                onClick={() => handleConfigChange({ textAlign: 'right' })}
                 className={`flex-1 py-1 flex items-center justify-center rounded ${
                   activeSlideConfig.textAlign === 'right' ? 'bg-amber-500 text-black' : 'text-neutral-400 hover:text-white'
                 }`}
@@ -186,7 +223,7 @@ export function LyricPropertyInspector() {
             max={2.0}
             step={0.1}
             value={[activeSlideConfig.lineHeight]}
-            onValueChange={([val]) => updateActiveSlideConfig({ lineHeight: val })}
+            onValueChange={([val]) => handleConfigChange({ lineHeight: val })}
           />
         </FormRow>
       </div>
@@ -201,7 +238,7 @@ export function LyricPropertyInspector() {
         <FormRow label="Text Color">
           <ColorPicker
             value={activeSlideConfig.textColor}
-            onChange={(val) => updateActiveSlideConfig({ textColor: val })}
+            onChange={(val) => handleConfigChange({ textColor: val })}
           />
         </FormRow>
 
@@ -209,7 +246,7 @@ export function LyricPropertyInspector() {
           <span className="text-xs text-neutral-300">Stage Text Drop Shadow</span>
           <Switch
             checked={activeSlideConfig.shadow}
-            onCheckedChange={(checked) => updateActiveSlideConfig({ shadow: checked })}
+            onCheckedChange={(checked) => handleConfigChange({ shadow: checked })}
           />
         </div>
       </div>
@@ -224,7 +261,7 @@ export function LyricPropertyInspector() {
         <FormRow label="Transition Effect">
           <Select
             value={activeSlideConfig.transitionType}
-            onValueChange={(val: any) => updateActiveSlideConfig({ transitionType: val })}
+            onValueChange={(val: any) => handleConfigChange({ transitionType: val })}
           >
             <SelectTrigger className="bg-neutral-800 border-neutral-700 text-white">
               <SelectValue placeholder="Transition effect" />
@@ -245,7 +282,7 @@ export function LyricPropertyInspector() {
             max={1500}
             step={50}
             value={[activeSlideConfig.transitionDuration]}
-            onValueChange={([val]) => updateActiveSlideConfig({ transitionDuration: val })}
+            onValueChange={([val]) => handleConfigChange({ transitionDuration: val })}
           />
         </FormRow>
       </div>

@@ -49,10 +49,26 @@ export function VisualCanvasEditor() {
 
   const activeSlide = slides.find((s) => s.id === selectedSlideId) || slides[0];
 
+  // Measure canvas width to dynamically scale font size to match 1920 reference stage
+  const [editorScale, setEditorScale] = useState(0.5);
+
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const updateScale = () => {
+      setEditorScale((el.clientWidth || 960) / 1920);
+    };
+    updateScale();
+    const ro = new ResizeObserver(updateScale);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // Broadcast to presentation engine & socket when active slide or style changes
-  const broadcastCurrentSlide = (isLive: boolean = presStore.active && !presStore.cleared) => {
-    if (!activeSlide) return;
-    const payload = buildLyricPayload(activeSlide);
+  const broadcastCurrentSlide = (isLive: boolean = presStore.active && !presStore.cleared, targetSlide?: typeof activeSlide) => {
+    const slideToBroadcast = targetSlide || activeSlide;
+    if (!slideToBroadcast) return;
+    const payload = buildLyricPayload(slideToBroadcast);
 
     presStore.setPresentationState({
       active: isLive,
@@ -178,14 +194,14 @@ export function VisualCanvasEditor() {
   const handleNext = () => {
     const next = nextSlide();
     if (next && presStore.active && !presStore.cleared) {
-      setTimeout(() => broadcastCurrentSlide(true), 50);
+      broadcastCurrentSlide(true, next);
     }
   };
 
   const handlePrev = () => {
     const prev = prevSlide();
     if (prev && presStore.active && !presStore.cleared) {
-      setTimeout(() => broadcastCurrentSlide(true), 50);
+      broadcastCurrentSlide(true, prev);
     }
   };
 
@@ -343,12 +359,12 @@ export function VisualCanvasEditor() {
                 className="whitespace-pre-wrap leading-tight drop-shadow-md text-center"
                 style={{
                   fontFamily: `"${activeSlideConfig.fontFamily}", sans-serif`,
-                  fontSize: `clamp(18px, ${activeSlideConfig.fontSize * 0.45}px, 64px)`,
+                  fontSize: `${Math.max(12, Math.round(activeSlideConfig.fontSize * editorScale))}px`,
                   fontWeight: activeSlideConfig.fontWeight,
                   textAlign: activeSlideConfig.textAlign as React.CSSProperties['textAlign'],
                   color: activeSlideConfig.textColor,
                   lineHeight: activeSlideConfig.lineHeight,
-                  letterSpacing: `${activeSlideConfig.letterSpacing}px`,
+                  letterSpacing: `${activeSlideConfig.letterSpacing * editorScale}px`,
                   textShadow: activeSlideConfig.shadow
                     ? '2px 4px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)'
                     : 'none',
@@ -363,7 +379,7 @@ export function VisualCanvasEditor() {
                   className="whitespace-pre-wrap mt-2 opacity-80 text-center"
                   style={{
                     fontFamily: `"${activeSlideConfig.fontFamily}", sans-serif`,
-                    fontSize: `clamp(14px, ${activeSlideConfig.fontSize * 0.32}px, 48px)`,
+                    fontSize: `${Math.max(10, Math.round(activeSlideConfig.fontSize * 0.65 * editorScale))}px`,
                     color: activeSlideConfig.textColor,
                     textAlign: activeSlideConfig.textAlign as React.CSSProperties['textAlign'],
                   }}

@@ -102,14 +102,17 @@ export const useLyricsStudioStore = create<LyricsStudioState>()(
 
       setSongs: (songs) => {
         const currentSelected = get().selectedSongId;
+        const currentSlideId = get().selectedSlideId;
         const targetSong = songs.find((s) => s.id === currentSelected) || songs[0];
         const newSlides = generateSlidesFromSong(targetSong);
+        const retainedSlide = newSlides.find((s) => s.id === currentSlideId) || newSlides[0];
+        const slideIdx = retainedSlide ? newSlides.findIndex((s) => s.id === retainedSlide.id) : 0;
         set({
           songs,
           selectedSongId: targetSong?.id || null,
           slides: newSlides,
-          selectedSlideId: newSlides[0]?.id || null,
-          activeGlobalSlideIndex: 0,
+          selectedSlideId: retainedSlide?.id || null,
+          activeGlobalSlideIndex: Math.max(0, slideIdx),
         });
       },
 

@@ -53,6 +53,49 @@ export function DisplayPreview() {
     layout   = 'stack',
   } = usePresentationStore();
 
+  // ── Stage scaling: 16:9 aspect-fit container ──────────────────────────────
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [stageSize, setStageSize] = React.useState({ width: 1920, height: 1080, scale: 1 });
+
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const updateSize = () => {
+      const w = el.clientWidth || window.innerWidth || 1920;
+      const h = el.clientHeight || window.innerHeight || 1080;
+      const targetRatio = 16 / 9;
+      const currentRatio = w / h;
+
+      let stageW: number;
+      let stageH: number;
+
+      if (currentRatio > targetRatio) {
+        stageH = h;
+        stageW = h * targetRatio;
+      } else {
+        stageW = w;
+        stageH = w / targetRatio;
+      }
+
+      setStageSize({
+        width: Math.round(stageW),
+        height: Math.round(stageH),
+        scale: stageW / 1920,
+      });
+    };
+
+    updateSize();
+    const ro = new ResizeObserver(updateSize);
+    ro.observe(el);
+    window.addEventListener('resize', updateSize);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', updateSize);
+    };
+  }, []);
+
   // ── Background ──────────────────────────────────────────────────────────
 
   const bgStyle = (): React.CSSProperties => {
@@ -113,22 +156,23 @@ export function DisplayPreview() {
 
   const lyricTypographyStyle = (item: LyricSlide): React.CSSProperties => {
     const font = item.fontFamily || typography?.fontFamily || 'Noto Sans Telugu';
-    const size = item.fontSize || typography?.fontSize || 56;
+    const baseSize = item.fontSize || typography?.fontSize || 56;
+    const scaledSize = Math.max(14, Math.round(baseSize * stageSize.scale));
     const weightKey = item.fontWeight || typography?.fontWeight || 'bold';
     const cssWeight = FONT_WEIGHT_MAP[weightKey] ?? weightKey ?? '700';
     const align = (item.textAlign || typography?.textAlign || 'center') as React.CSSProperties['textAlign'];
     const color = item.textColor || typography?.textColor || '#ffffff';
-    const lh = item.lineHeight || typography?.lineHeight || 1.4;
+    const lh = item.lineHeight || typography?.lineHeight || 1.3;
     const ls = item.letterSpacing !== undefined ? item.letterSpacing : (typography?.letterSpacing || 0);
 
     return {
       fontFamily: `"${font}", sans-serif`,
-      fontSize: clampSize(size),
+      fontSize: `${scaledSize}px`,
       fontWeight: cssWeight,
       textAlign: align,
       color: color,
       lineHeight: lh,
-      letterSpacing: ls ? `${ls}px` : undefined,
+      letterSpacing: ls ? `${ls * stageSize.scale}px` : undefined,
       textShadow: textShadowStr(item.shadow, item.outline, item.outlineWidth),
     };
   };
@@ -162,43 +206,43 @@ export function DisplayPreview() {
     if (t === 'none') {
       return {
         initial: { opacity: 1 },
-        animate: { opacity: 1 },
-        exit:    { opacity: 1 },
+        animate: { opacity: 1, transition: { duration: 0 } },
+        exit:    { opacity: 1, transition: { duration: 0 } },
       };
     }
     if (t === 'slide' || t === 'slide-up') {
       return {
-        initial: { opacity: 0, y: 60 },
-        animate: { opacity: 1, y: 0,  transition: { duration: dur, ease: 'easeOut' as const } },
-        exit:    { opacity: 0, y: -40, transition: { duration: dur * 0.7, ease: 'easeIn' as const } },
+        initial: { opacity: 0, y: 50 },
+        animate: { opacity: 1, y: 0,  transition: { duration: dur, ease: [0.16, 1, 0.3, 1] as const } },
+        exit:    { opacity: 0, y: -40, transition: { duration: dur * 0.75, ease: [0.7, 0, 0.84, 0] as const } },
       };
     }
     if (t === 'slide-down') {
       return {
-        initial: { opacity: 0, y: -60 },
-        animate: { opacity: 1, y: 0,  transition: { duration: dur, ease: 'easeOut' as const } },
-        exit:    { opacity: 0, y: 40,  transition: { duration: dur * 0.7, ease: 'easeIn' as const } },
+        initial: { opacity: 0, y: -50 },
+        animate: { opacity: 1, y: 0,  transition: { duration: dur, ease: [0.16, 1, 0.3, 1] as const } },
+        exit:    { opacity: 0, y: 40,  transition: { duration: dur * 0.75, ease: [0.7, 0, 0.84, 0] as const } },
       };
     }
     if (t === 'slide-left') {
       return {
-        initial: { opacity: 0, x: 80 },
-        animate: { opacity: 1, x: 0,  transition: { duration: dur, ease: 'easeOut' as const } },
-        exit:    { opacity: 0, x: -60, transition: { duration: dur * 0.7, ease: 'easeIn' as const } },
+        initial: { opacity: 0, x: 70 },
+        animate: { opacity: 1, x: 0,  transition: { duration: dur, ease: [0.16, 1, 0.3, 1] as const } },
+        exit:    { opacity: 0, x: -60, transition: { duration: dur * 0.75, ease: [0.7, 0, 0.84, 0] as const } },
       };
     }
     if (t === 'slide-right') {
       return {
-        initial: { opacity: 0, x: -80 },
-        animate: { opacity: 1, x: 0,  transition: { duration: dur, ease: 'easeOut' as const } },
-        exit:    { opacity: 0, x: 60,  transition: { duration: dur * 0.7, ease: 'easeIn' as const } },
+        initial: { opacity: 0, x: -70 },
+        animate: { opacity: 1, x: 0,  transition: { duration: dur, ease: [0.16, 1, 0.3, 1] as const } },
+        exit:    { opacity: 0, x: 60,  transition: { duration: dur * 0.75, ease: [0.7, 0, 0.84, 0] as const } },
       };
     }
     // Default fade / crossfade
     return {
       initial: { opacity: 0 },
-      animate: { opacity: 1, transition: { duration: dur } },
-      exit:    { opacity: 0, transition: { duration: dur * 0.7 } },
+      animate: { opacity: 1, transition: { duration: dur, ease: 'easeInOut' as const } },
+      exit:    { opacity: 0, transition: { duration: dur * 0.75, ease: 'easeInOut' as const } },
     };
   };
 
@@ -230,135 +274,155 @@ export function DisplayPreview() {
 
   return (
     <div
-      className="w-full h-full overflow-hidden flex flex-col items-center justify-center relative"
-      style={{ padding: isSongMode ? 0 : 'clamp(16px, 4vw, 80px)', ...bgStyle() }}
+      ref={containerRef}
+      className="w-full h-full overflow-hidden flex items-center justify-center relative select-none"
+      style={bgStyle()}
     >
-      <AnimatePresence mode="wait">
+      {/* ── 16:9 Logical Presentation Stage ── */}
+      <div
+        className="relative overflow-hidden flex items-center justify-center select-none"
+        style={{
+          width: isSongMode ? `${stageSize.width}px` : '100%',
+          height: isSongMode ? `${stageSize.height}px` : '100%',
+          maxWidth: '100%',
+          maxHeight: '100%',
+          padding: isSongMode ? 0 : 'clamp(16px, 4vw, 80px)',
+        }}
+      >
         {/* ── BIBLE PRESENTATION MODE ─────────────────────────────────── */}
-        {showBibleContent && (
-          <motion.div
-            key={`bible-${verse.bookId}-${verse.chapter}-${verse.verse}-${language}-${layout}`}
-            variants={getVariants(transition?.type, transition?.duration)}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            className="max-w-[88%] w-full flex flex-col"
-            style={{ gap: 'clamp(10px, 2vw, 36px)' }}
-          >
-            {/* Side-by-side layout */}
-            {isSideBySide && (
-              <div className="flex gap-[4%] items-start w-full">
-                {showTelugu && (
-                  <div
-                    className="flex-1 whitespace-pre-wrap"
-                    style={typographyStyle(0.9)}
-                  >
-                    {verse.text}
-                  </div>
-                )}
-                <div style={{
-                  width: '1px',
-                  alignSelf: 'stretch',
-                  background: dividerColor,
-                  flexShrink: 0,
-                  marginTop: '0.2em',
-                }} />
-                {showEnglish && (
-                  <div
-                    className="flex-1 whitespace-pre-wrap"
-                    style={{ ...typographyStyle(0.9), opacity: 0.92 }}
-                  >
-                    {verse.textEnglish ?? '—'}
-                  </div>
-                )}
-              </div>
-            )}
+        <AnimatePresence mode="wait">
+          {showBibleContent && (
+            <motion.div
+              key={`bible-${verse.bookId}-${verse.chapter}-${verse.verse}-${language}-${layout}`}
+              variants={getVariants(transition?.type, transition?.duration)}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="max-w-[88%] w-full flex flex-col"
+              style={{ gap: 'clamp(10px, 2vw, 36px)' }}
+            >
+              {/* Side-by-side layout */}
+              {isSideBySide && (
+                <div className="flex gap-[4%] items-start w-full">
+                  {showTelugu && (
+                    <div
+                      className="flex-1 whitespace-pre-wrap"
+                      style={typographyStyle(0.9)}
+                    >
+                      {verse.text}
+                    </div>
+                  )}
+                  <div style={{
+                    width: '1px',
+                    alignSelf: 'stretch',
+                    background: dividerColor,
+                    flexShrink: 0,
+                    marginTop: '0.2em',
+                  }} />
+                  {showEnglish && (
+                    <div
+                      className="flex-1 whitespace-pre-wrap"
+                      style={{ ...typographyStyle(0.9), opacity: 0.92 }}
+                    >
+                      {verse.textEnglish ?? '—'}
+                    </div>
+                  )}
+                </div>
+              )}
 
-            {/* Stack bilingual */}
-            {isStack && (
-              <>
-                {showTelugu && (
-                  <div className="whitespace-pre-wrap" style={typographyStyle()}>
-                    {verse.text}
-                  </div>
-                )}
-                {showEnglish && verse.textEnglish && (
-                  <div
-                    className="whitespace-pre-wrap"
-                    style={{
-                      ...typographyStyle(0.75),
-                      opacity: 0.80,
-                      fontWeight: 'normal',
-                    }}
-                  >
-                    {verse.textEnglish}
-                  </div>
-                )}
-              </>
-            )}
+              {/* Stack bilingual */}
+              {isStack && (
+                <>
+                  {showTelugu && (
+                    <div className="whitespace-pre-wrap" style={typographyStyle()}>
+                      {verse.text}
+                    </div>
+                  )}
+                  {showEnglish && verse.textEnglish && (
+                    <div
+                      className="whitespace-pre-wrap"
+                      style={{
+                        ...typographyStyle(0.75),
+                        opacity: 0.80,
+                        fontWeight: 'normal',
+                      }}
+                    >
+                      {verse.textEnglish}
+                    </div>
+                  )}
+                </>
+              )}
 
-            {/* Single language */}
-            {!isSideBySide && !isStack && (
-              <div className="whitespace-pre-wrap" style={typographyStyle()}>
-                {language === 'english' ? (verse.textEnglish ?? verse.text) : verse.text}
-              </div>
-            )}
+              {/* Single language */}
+              {!isSideBySide && !isStack && (
+                <div className="whitespace-pre-wrap" style={typographyStyle()}>
+                  {language === 'english' ? (verse.textEnglish ?? verse.text) : verse.text}
+                </div>
+              )}
 
-            {/* Reference */}
-            {typography?.showReference && refLine && (
-              <div className="opacity-70" style={refStyle()}>
-                {refLine}
-              </div>
-            )}
-          </motion.div>
-        )}
+              {/* Reference */}
+              {typography?.showReference && refLine && (
+                <div className="opacity-70" style={refStyle()}>
+                  {refLine}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ── SONG LYRIC PRESENTATION MODE ────────────────────────────── */}
         {showSongContent && lyric && (
-          <motion.div
-            key={`lyric-${lyric.id}-${lyric.textPrimary}`}
-            variants={getVariants(lyric.transitionType, lyric.transitionDuration)}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            className="absolute flex flex-col justify-center select-none"
+          <div
+            className="absolute flex flex-col justify-center select-none pointer-events-none"
             style={{
               left: `${lyric.x ?? 50}%`,
               top: `${lyric.y ?? 50}%`,
               width: `${lyric.width ?? 85}%`,
               transform: 'translate(-50%, -50%)',
-              padding: '1rem',
             }}
           >
-            <div
-              className="whitespace-pre-wrap leading-snug drop-shadow-md"
-              style={lyricTypographyStyle(lyric)}
-            >
-              {lyric.textPrimary}
-            </div>
-
-            {lyric.textSecondary && (
-              <div
-                className="whitespace-pre-wrap mt-3 opacity-80"
-                style={{
-                  ...lyricTypographyStyle(lyric),
-                  fontSize: `clamp(${Math.round((lyric.fontSize || typography?.fontSize || 56) * 0.35)}px, ${(((lyric.fontSize || typography?.fontSize || 56) * 0.7) / 14).toFixed(2)}vw, ${Math.round((lyric.fontSize || typography?.fontSize || 56) * 1.3)}px)`,
-                  fontWeight: 'normal',
-                }}
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.div
+                key={`lyric-slide-${lyric.id}-${lyric.textPrimary}`}
+                variants={getVariants(lyric.transitionType, lyric.transitionDuration)}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                className="w-full flex flex-col justify-center"
               >
-                {lyric.textSecondary}
-              </div>
-            )}
+                <div
+                  className="whitespace-pre-wrap leading-tight drop-shadow-md"
+                  style={lyricTypographyStyle(lyric)}
+                >
+                  {lyric.textPrimary}
+                </div>
 
-            {/* Optional section / song badge in subtle presentation corner */}
-            {lyric.sectionLabel && (
-              <div className="mt-4 text-xs tracking-wider uppercase opacity-40 font-mono text-center">
-                {lyric.songTitle ? `${lyric.songTitle} • ` : ''}{lyric.sectionLabel}
-              </div>
-            )}
-          </motion.div>
+                {lyric.textSecondary && (
+                  <div
+                    className="whitespace-pre-wrap mt-3 opacity-80"
+                    style={{
+                      ...lyricTypographyStyle(lyric),
+                      fontSize: `${Math.max(11, Math.round((lyric.fontSize || 56) * 0.65 * stageSize.scale))}px`,
+                      fontWeight: 'normal',
+                    }}
+                  >
+                    {lyric.textSecondary}
+                  </div>
+                )}
+
+                {lyric.sectionLabel && (
+                  <div
+                    className="mt-4 text-xs tracking-wider uppercase opacity-40 font-mono"
+                    style={{ textAlign: (lyric.textAlign as any) || 'center' }}
+                  >
+                    {lyric.songTitle ? `${lyric.songTitle} • ` : ''}{lyric.sectionLabel}
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
         )}
-      </AnimatePresence>
+      </div>
     </div>
   );
 }
