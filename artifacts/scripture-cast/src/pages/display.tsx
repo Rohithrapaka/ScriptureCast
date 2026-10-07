@@ -3,6 +3,7 @@ import { usePresentationStore, type LyricSlide } from '@/hooks/use-presentation-
 import { usePresentationSocket } from '@/hooks/use-presentation-socket';
 import { motion, AnimatePresence } from 'framer-motion';
 
+
 // ── Font weight string → CSS numeric value ───────────────────────────────────
 
 const FONT_WEIGHT_MAP: Record<string, string> = {
@@ -43,19 +44,39 @@ function clampSize(base: number) {
 
 // ── Shared DisplayPreview ─────────────────────────────────────────────────────
 // Used by both the full Display page and the admin PreviewPanel (scaled inside
-// a 1920×1080 container). All layout decisions use vw-relative units so the
+// a 1920×1080 container). All layout decisions use 16:9 stage scaling so the
 // scaling works pixel-perfectly at any viewport or transform size.
 
-export function DisplayPreview() {
+export function DisplayPreview({ interactive = false }: { interactive?: boolean }) {
   const {
     active, cleared, contentType = 'bible', verse, lyric, typography, background, transition,
     language = 'telugu',
     layout   = 'stack',
+    setPresentationState,
   } = usePresentationStore();
 
   // ── Stage scaling: 16:9 aspect-fit container ──────────────────────────────
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const stageRef = React.useRef<HTMLDivElement>(null);
   const [stageSize, setStageSize] = React.useState({ width: 1920, height: 1080, scale: 1 });
+
+  // ── Invisible interactive drag & resize state with auto-scaling ───────────
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [isResizing, setIsResizing] = React.useState(false);
+  const [resizeEdge, setResizeEdge] = React.useState<'left' | 'right' | null>(null);
+
+  const [dragStart, setDragStart] = React.useState({
+    clientX: 0,
+    clientY: 0,
+    initialX: 50,
+    initialY: 50,
+  });
+
+  const [resizeStart, setResizeStart] = React.useState({
+    clientX: 0,
+    initialWidth: 85,
+    initialFontSize: 56,
+  });
 
   React.useEffect(() => {
     const el = containerRef.current;
@@ -95,6 +116,163 @@ export function DisplayPreview() {
       window.removeEventListener('resize', updateSize);
     };
   }, []);
+
+  // ── Broadcast position & styling update to server & store ──────────────────
+  const broadcastLyricPatch = React.useCallback((patch: Partial<LyricSlide>) => {
+    if (!lyric) return;
+    const updatedLyric: LyricSlide = {
+      ...lyric,
+      ...patch,
+    };
+
+    setPresentationState({
+      active: true,
+      cleared: false,
+      contentType: 'song',
+      lyric: updatedLyric,
+    });
+
+    fetch('/api/presentation/state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        active: true,
+        cleared: false,
+        contentType: 'song',
+        lyric: updatedLyric,
+      }),
+    }).catch(console.error);
+  }, [lyric, setPresentationState]);
+
+  // ── Mouse Drag & Resize Listeners (Direct Auto Font-Scaling) ───────────────
+  const handleMouseDownLyric = (e: React.MouseEvent) => {
+    if (!interactive || !lyric) return;
+    if ((e.target as HTMLElement).closest('[data-handle]')) return;
+    e.preventDefault();
+    setIsDragging(true);
+    setDragStart({
+      clientX: e.clientX,
+      clientY: e.clientY,
+      initialX: lyric.x ?? 50,
+      initialY: lyric.y ?? 50,
+    });
+  };
+
+  const handleResizeStart = (e: React.MouseEvent, edge: 'left' | 'right') => {
+    if (!interactive || !lyric) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+    setResizeEdge(edge);
+    setResizeStart({
+      clientX: e.clientX,
+      initialWidth: lyric.width ?? 85,
+      initialFontSize: lyric.fontSize ?? 56,
+    });
+  };
+
+  React.useEffect(() => {
+    if (!isDragging && !isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const stageEl = stageRef.current;
+      if (!stageEl || !lyric) return;
+      const rect = stageEl.getBoundingClientRect();
+
+      if (isDragging) {
+        const deltaX = e.clientX - dragStart.clientX;
+        const deltaY = e.clientY - dragStart.clientY;
+        const deltaPercentX = (deltaX / rect.width) * 100;
+        const deltaPercentY = (deltaY / rect.height) * 100;
+
+        const newX = Math.max(5, Math.min(95, Math.round(dragStart.initialX + deltaPercentX)));
+        const newY = Math.max(5, Math.min(95, Math.round(dragStart.initialY + deltaPercentY)));
+
+        broadcastLyricPatch({ x: newX, y: newY });
+      }
+
+      // Auto scale font proportionally as box width expands or contracts
+      if (isResizing && resizeEdge) {
+        const deltaX = e.clientX - resizeStart.clientX;
+        const deltaPercentX = (deltaX / rect.width) * 100;
+
+        let newWidth: number;
+        if (resizeEdge === 'right') {
+          newWidth = Math.max(30, Math.min(98, Math.round(resizeStart.initialWidth + deltaPercentX)));
+        } else {
+          newWidth = Math.max(30, Math.min(98, Math.round(resizeStart.initialWidth - deltaPercentX)));
+        }
+
+        const widthRatio = newWidth / (resizeStart.initialWidth || 1);
+        const startFontSize = resizeStart.initialFontSize || 56;
+        const newFontSize = Math.max(20, Math.min(120, Math.round(startFontSize * widthRatio)));
+
+        broadcastLyricPatch({ width: newWidth, fontSize: newFontSize });
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      setIsResizing(false);
+      setResizeEdge(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, isResizing, resizeEdge, dragStart, resizeStart, lyric, broadcastLyricPatch]);
+
+  // ── Keyboard Corrections on /display ──────────────────────────────────────
+  React.useEffect(() => {
+    if (!interactive || !lyric) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+
+      const step = e.shiftKey ? 5 : 1;
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        broadcastLyricPatch({ y: Math.max(5, (lyric.y ?? 50) - step) });
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        broadcastLyricPatch({ y: Math.min(95, (lyric.y ?? 50) + step) });
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        broadcastLyricPatch({ x: Math.max(5, (lyric.x ?? 50) - step) });
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        broadcastLyricPatch({ x: Math.min(95, (lyric.x ?? 50) + step) });
+      } else if (e.key === 'c' || e.key === 'C') {
+        e.preventDefault();
+        broadcastLyricPatch({ x: 50, y: 50 });
+      } else if (e.key === ']' || e.key === '=' || e.key === '+') {
+        e.preventDefault();
+        const currentW = lyric.width ?? 85;
+        const currentF = lyric.fontSize ?? 56;
+        broadcastLyricPatch({
+          width: Math.min(98, currentW + 2),
+          fontSize: Math.min(120, currentF + 2),
+        });
+      } else if (e.key === '[' || e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        const currentW = lyric.width ?? 85;
+        const currentF = lyric.fontSize ?? 56;
+        broadcastLyricPatch({
+          width: Math.max(30, currentW - 2),
+          fontSize: Math.max(20, currentF - 2),
+        });
+      } else if (e.key === '0') {
+        e.preventDefault();
+        broadcastLyricPatch({ x: 50, y: 50, width: 85, fontSize: 56 });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [interactive, lyric, broadcastLyricPatch]);
 
   // ── Background ──────────────────────────────────────────────────────────
 
@@ -162,7 +340,7 @@ export function DisplayPreview() {
     const cssWeight = FONT_WEIGHT_MAP[weightKey] ?? weightKey ?? '700';
     const align = (item.textAlign || typography?.textAlign || 'center') as React.CSSProperties['textAlign'];
     const color = item.textColor || typography?.textColor || '#ffffff';
-    const lh = item.lineHeight || typography?.lineHeight || 1.3;
+    const lh = item.lineHeight || typography?.lineHeight || 1.4;
     const ls = item.letterSpacing !== undefined ? item.letterSpacing : (typography?.letterSpacing || 0);
 
     return {
@@ -278,14 +456,16 @@ export function DisplayPreview() {
       className="w-full h-full overflow-hidden flex items-center justify-center relative select-none"
       style={bgStyle()}
     >
-      {/* ── 16:9 Logical Presentation Stage ── */}
+      {/* ── 16:9 Logical Presentation Stage (Guarantees 1:1 preview match) ── */}
       <div
+        ref={stageRef}
         className="relative overflow-hidden flex items-center justify-center select-none"
         style={{
-          width: isSongMode ? `${stageSize.width}px` : '100%',
-          height: isSongMode ? `${stageSize.height}px` : '100%',
+          width: `${stageSize.width}px`,
+          height: `${stageSize.height}px`,
           maxWidth: '100%',
           maxHeight: '100%',
+          aspectRatio: '16/9',
           padding: isSongMode ? 0 : 'clamp(16px, 4vw, 80px)',
         }}
       >
@@ -298,7 +478,7 @@ export function DisplayPreview() {
               initial="initial"
               animate="animate"
               exit="exit"
-              className="max-w-[88%] w-full flex flex-col"
+              className="max-w-[88%] w-full flex flex-col pointer-events-none select-none"
               style={{ gap: 'clamp(10px, 2vw, 36px)' }}
             >
               {/* Side-by-side layout */}
@@ -370,26 +550,55 @@ export function DisplayPreview() {
           )}
         </AnimatePresence>
 
-        {/* ── SONG LYRIC PRESENTATION MODE ────────────────────────────── */}
+        {/* ── SONG LYRIC PRESENTATION MODE (Direct Position & Sizing Control — NO HUD, NO BOXES) ── */}
         {showSongContent && lyric && (
           <div
-            className="absolute flex flex-col justify-center select-none pointer-events-none"
+            className={`absolute select-none group ${interactive ? (isDragging ? 'cursor-grabbing ring-1 ring-amber-400/40 rounded-lg' : isResizing ? 'cursor-col-resize ring-1 ring-amber-400/40 rounded-lg' : 'cursor-grab hover:ring-1 hover:ring-white/20 rounded-lg') : 'pointer-events-none'}`}
             style={{
               left: `${lyric.x ?? 50}%`,
               top: `${lyric.y ?? 50}%`,
               width: `${lyric.width ?? 85}%`,
               transform: 'translate(-50%, -50%)',
+              pointerEvents: interactive ? 'auto' : 'none',
+              transition: isDragging || isResizing ? 'none' : 'box-shadow 0.15s ease',
             }}
+            onMouseDown={handleMouseDownLyric}
           >
-            <AnimatePresence mode="popLayout" initial={false}>
+            {/* Edge resize handles with clear visual indicator on hover */}
+            {interactive && (
+              <>
+                {/* Left Edge Handle */}
+                <div
+                  data-handle="left"
+                  onMouseDown={(e) => handleResizeStart(e, 'left')}
+                  className="absolute top-0 left-0 -translate-x-1/2 w-8 h-full cursor-col-resize z-20 flex items-center justify-center group/edge"
+                  title="Drag edge to resize box width & font size"
+                >
+                  <div className="w-1 h-14 rounded-full bg-amber-400/50 group-hover/edge:bg-amber-400 group-hover:opacity-100 opacity-0 transition-all shadow-md group-hover/edge:scale-y-125" />
+                </div>
+
+                {/* Right Edge Handle */}
+                <div
+                  data-handle="right"
+                  onMouseDown={(e) => handleResizeStart(e, 'right')}
+                  className="absolute top-0 right-0 translate-x-1/2 w-8 h-full cursor-col-resize z-20 flex items-center justify-center group/edge"
+                  title="Drag edge to resize box width & font size"
+                >
+                  <div className="w-1 h-14 rounded-full bg-amber-400/50 group-hover/edge:bg-amber-400 group-hover:opacity-100 opacity-0 transition-all shadow-md group-hover/edge:scale-y-125" />
+                </div>
+              </>
+            )}
+
+            <AnimatePresence mode="wait">
               <motion.div
-                key={`lyric-slide-${lyric.id}-${lyric.textPrimary}`}
+                key={`lyric-${lyric.id}-${lyric.sectionId}`}
                 variants={getVariants(lyric.transitionType, lyric.transitionDuration)}
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                className="w-full flex flex-col justify-center"
+                className="w-full flex flex-col justify-center pointer-events-none select-none"
               >
+                {/* Primary lyrics */}
                 <div
                   className="whitespace-pre-wrap leading-tight drop-shadow-md"
                   style={lyricTypographyStyle(lyric)}
@@ -397,6 +606,7 @@ export function DisplayPreview() {
                   {lyric.textPrimary}
                 </div>
 
+                {/* Secondary lyrics (transliteration / second language) */}
                 {lyric.textSecondary && (
                   <div
                     className="whitespace-pre-wrap mt-3 opacity-80"
@@ -410,12 +620,13 @@ export function DisplayPreview() {
                   </div>
                 )}
 
+                {/* Subtle section label at bottom */}
                 {lyric.sectionLabel && (
                   <div
                     className="mt-4 text-xs tracking-wider uppercase opacity-40 font-mono"
                     style={{ textAlign: (lyric.textAlign as any) || 'center' }}
                   >
-                    {lyric.songTitle ? `${lyric.songTitle} • ` : ''}{lyric.sectionLabel}
+                    {lyric.songTitle ? `${lyric.songTitle} · ` : ''}{lyric.sectionLabel}
                   </div>
                 )}
               </motion.div>
@@ -448,7 +659,10 @@ export default function Display() {
 
   return (
     <div style={{ position: 'fixed', inset: 0, width: '100vw', height: '100vh' }}>
-      <DisplayPreview />
+      <DisplayPreview interactive={true} />
     </div>
   );
 }
+
+
+

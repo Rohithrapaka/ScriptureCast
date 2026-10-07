@@ -50,9 +50,11 @@ interface SongListPanelProps {
   onSongCreated?: (song: Song) => void;
   onSongUpdated?: (song: Song) => void;
   onSongDeleted?: (songId: string) => void;
+  showSections?: boolean;
+  onEditSong?: (songId: string) => void;
 }
 
-export function SongListPanel({ onSongCreated, onSongUpdated, onSongDeleted }: SongListPanelProps) {
+export function SongListPanel({ onSongCreated, onSongUpdated, onSongDeleted, showSections = true, onEditSong }: SongListPanelProps) {
   const {
     songs,
     selectedSongId,
@@ -76,6 +78,8 @@ export function SongListPanel({ onSongCreated, onSongUpdated, onSongDeleted }: S
   const [newLanguage, setNewLanguage] = useState('english');
   const [newKey, setNewKey] = useState('');
   const [newLyrics, setNewLyrics] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   // Edit song state
   const [editTitle, setEditTitle] = useState('');
@@ -128,6 +132,9 @@ export function SongListPanel({ onSongCreated, onSongUpdated, onSongDeleted }: S
     e.preventDefault();
     if (!newTitle.trim()) return;
 
+    setIsCreating(true);
+    setCreateError(null);
+
     try {
       const res = await fetch('/api/songs', {
         method: 'POST',
@@ -158,10 +165,21 @@ export function SongListPanel({ onSongCreated, onSongUpdated, onSongDeleted }: S
         setNewLanguage('english');
         setNewKey('');
         setNewLyrics('');
+        setCreateError(null);
         setIsAddModalOpen(false);
+      } else {
+        let errorMsg = `Server error (${res.status})`;
+        try {
+          const errData = await res.json();
+          if (errData.error) errorMsg = errData.error;
+        } catch (_) { /* ignore */ }
+        setCreateError(`Unable to create song: ${errorMsg}`);
       }
     } catch (err) {
       console.error('Failed to create song:', err);
+      setCreateError('Unable to create song. Please check the server connection.');
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -405,7 +423,11 @@ export function SongListPanel({ onSongCreated, onSongUpdated, onSongDeleted }: S
                 <div className="flex items-center gap-1">
                   {isSelected && (
                     <button
-                      onClick={handleOpenEditSong}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (onEditSong) onEditSong(song.id);
+                        else handleOpenEditSong(event);
+                      }}
                       className="p-1 text-neutral-400 hover:text-amber-300 rounded hover:bg-neutral-700/50"
                       title="Edit Song Details"
                     >
@@ -423,7 +445,7 @@ export function SongListPanel({ onSongCreated, onSongUpdated, onSongDeleted }: S
               </div>
 
               {/* Expanded Sections & Slides when Selected */}
-              {isSelected && (
+              {isSelected && showSections && (
                 <div className="px-3 pb-3 pt-1 border-t border-neutral-800/50 space-y-2">
                   {/* Song Level Toolbar */}
                   <div className="flex items-center justify-between pt-1 pb-1">
@@ -551,9 +573,9 @@ export function SongListPanel({ onSongCreated, onSongUpdated, onSongDeleted }: S
       </div>
 
       {/* Modal: Create Song */}
-      <Modal
+      {showSections && <Modal
         open={isAddModalOpen}
-        onOpenChange={setIsAddModalOpen}
+        onOpenChange={(open) => { setIsAddModalOpen(open); if (!open) setCreateError(null); }}
         title="Add New Song"
         description="Create a new song with title and initial lyrics."
       >
@@ -610,18 +632,21 @@ export function SongListPanel({ onSongCreated, onSongUpdated, onSongDeleted }: S
           </FormRow>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>
+            {createError && (
+              <p className="text-red-400 text-xs flex-1 self-center">{createError}</p>
+            )}
+            <Button type="button" variant="outline" onClick={() => { setIsAddModalOpen(false); setCreateError(null); }} disabled={isCreating}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-amber-600 hover:bg-amber-500 text-white">
-              Create Song
+            <Button type="submit" className="bg-amber-600 hover:bg-amber-500 text-white" disabled={isCreating}>
+              {isCreating ? 'Creating…' : 'Create Song'}
             </Button>
           </div>
         </form>
-      </Modal>
+      </Modal>}
 
       {/* Modal: Edit Song Metadata */}
-      <Modal
+      {showSections && <Modal
         open={isEditSongOpen}
         onOpenChange={setIsEditSongOpen}
         title="Edit Song Details"
@@ -678,7 +703,7 @@ export function SongListPanel({ onSongCreated, onSongUpdated, onSongDeleted }: S
             </Button>
           </div>
         </form>
-      </Modal>
+      </Modal>}
 
       {/* Modal: Add Section */}
       <Modal

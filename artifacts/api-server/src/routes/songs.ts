@@ -6,9 +6,9 @@
  */
 
 import { Router, type Request, type Response } from "express";
+import { logger } from "../lib/logger";
 import {
-  authenticateToken,
-  requireRole,
+  optionalAuthenticateToken,
 } from "../middlewares/auth.middleware";
 import {
   listSongs,
@@ -24,6 +24,7 @@ import {
 const router = Router();
 
 function sendError(res: Response, err: unknown): void {
+  logger.error({ err }, "Song API request failed");
   if (err instanceof Error) {
     const status = (err as Error & { status?: number }).status ?? 500;
     res.status(status).json({ error: err.message });
@@ -59,7 +60,7 @@ router.get("/songs/:id", async (req: Request<{ id: string }>, res: Response) => 
 // POST /api/songs — Create a new song
 router.post(
   "/songs",
-  authenticateToken,
+  optionalAuthenticateToken,
   async (req: Request, res: Response) => {
     try {
       const { title, originalTitle, artistAuthor, key, bpm, category, tags, language, sections } = req.body;
@@ -88,7 +89,7 @@ router.post(
 // PUT /api/songs/:id — Update song metadata
 router.put(
   "/songs/:id",
-  authenticateToken,
+  optionalAuthenticateToken,
   async (req: Request<{ id: string }>, res: Response) => {
     try {
       const song = await updateSong(req.params.id, req.body);
@@ -102,8 +103,7 @@ router.put(
 // DELETE /api/songs/:id — Delete a song
 router.delete(
   "/songs/:id",
-  authenticateToken,
-  requireRole("super_admin", "admin", "presenter"),
+  optionalAuthenticateToken,
   async (req: Request<{ id: string }>, res: Response) => {
     try {
       await deleteSong(req.params.id);
@@ -117,7 +117,7 @@ router.delete(
 // POST /api/songs/:id/sections — Add a section to a song
 router.post(
   "/songs/:id/sections",
-  authenticateToken,
+  optionalAuthenticateToken,
   async (req: Request<{ id: string }>, res: Response) => {
     try {
       const { type, sectionNumber, label, hotkey, lyricsPrimary, lyricsSecondary, orderIndex } = req.body;
@@ -145,7 +145,7 @@ router.post(
 // PUT /api/songs/sections/:sectionId — Update a section
 router.put(
   "/songs/sections/:sectionId",
-  authenticateToken,
+  optionalAuthenticateToken,
   async (req: Request<{ sectionId: string }>, res: Response) => {
     try {
       const section = await updateSection(req.params.sectionId, req.body);
@@ -159,7 +159,7 @@ router.put(
 // DELETE /api/songs/sections/:sectionId — Delete a section
 router.delete(
   "/songs/sections/:sectionId",
-  authenticateToken,
+  optionalAuthenticateToken,
   async (req: Request<{ sectionId: string }>, res: Response) => {
     try {
       await deleteSection(req.params.sectionId);

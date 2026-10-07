@@ -42,9 +42,10 @@ export function VisualCanvasEditor() {
     initialX: 50,
     initialY: 50,
   });
-  const [resizeStart, setResizeStart] = useState<{ x: number; initialWidth: number }>({
+  const [resizeStart, setResizeStart] = useState<{ x: number; initialWidth: number; initialFontSize?: number }>({
     x: 0,
     initialWidth: 85,
+    initialFontSize: 56,
   });
 
   const activeSlide = slides.find((s) => s.id === selectedSlideId) || slides[0];
@@ -89,6 +90,12 @@ export function VisualCanvasEditor() {
     }).catch(console.error);
   };
 
+  useEffect(() => {
+    if (selectedSlideId && presStore.active && !presStore.cleared) {
+      broadcastCurrentSlide(true);
+    }
+  }, [selectedSlideId]);
+
   // Dragging handlers with percentage calculations
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('[data-handle]')) return; // Don't drag if clicking resize handle
@@ -111,6 +118,7 @@ export function VisualCanvasEditor() {
     setResizeStart({
       x: e.clientX,
       initialWidth: activeSlideConfig.width,
+      initialFontSize: activeSlideConfig.fontSize,
     });
   };
 
@@ -135,21 +143,23 @@ export function VisualCanvasEditor() {
         updateActiveSlideConfig({ x: newX, y: newY });
       }
 
-      // Handle resizing
+      // Handle resizing with proportional auto font-scaling
       if (isResizing && resizeEdge) {
         const deltaX = e.clientX - resizeStart.x;
         const deltaPercentX = (deltaX / rect.width) * 100;
         
         let newWidth: number;
         if (resizeEdge === 'right') {
-          // Dragging right edge right increases width
-          newWidth = Math.max(40, Math.min(95, Math.round(resizeStart.initialWidth + deltaPercentX)));
+          newWidth = Math.max(30, Math.min(98, Math.round(resizeStart.initialWidth + deltaPercentX)));
         } else {
-          // Dragging left edge left increases width
-          newWidth = Math.max(40, Math.min(95, Math.round(resizeStart.initialWidth - deltaPercentX)));
+          newWidth = Math.max(30, Math.min(98, Math.round(resizeStart.initialWidth - deltaPercentX)));
         }
 
-        updateActiveSlideConfig({ width: newWidth });
+        const widthRatio = newWidth / (resizeStart.initialWidth || 1);
+        const startFontSize = (resizeStart as any).initialFontSize || activeSlideConfig.fontSize || 56;
+        const newFontSize = Math.max(20, Math.min(120, Math.round(startFontSize * widthRatio)));
+
+        updateActiveSlideConfig({ width: newWidth, fontSize: newFontSize });
       }
     };
 
@@ -319,7 +329,7 @@ export function VisualCanvasEditor() {
             <div
               ref={textElementRef}
               onMouseDown={handleMouseDown}
-              className={`absolute cursor-move transition-shadow rounded-lg p-4 select-none ${
+              className={`absolute cursor-move transition-shadow select-none ${
                 isDragging
                   ? 'ring-2 ring-amber-400 shadow-2xl bg-amber-500/5 cursor-grabbing'
                   : isResizing ? 'ring-2 ring-green-400 shadow-2xl bg-green-500/5'
@@ -342,17 +352,21 @@ export function VisualCanvasEditor() {
               <div
                 data-handle="left"
                 onMouseDown={(e) => handleResizeStart(e, 'left')}
-                className="absolute top-0 left-0 -translate-x-1/2 w-3 h-full cursor-col-resize hover:bg-green-500/40 active:bg-green-500/60 group/handle rounded-l-lg transition-colors"
-                title="Drag to resize width"
-              />
+                className="absolute top-0 left-0 -translate-x-1/2 w-6 h-full cursor-col-resize z-20 flex items-center justify-center group/handle"
+                title="Drag edge to resize box width & font size"
+              >
+                <div className="w-1 h-12 rounded-full bg-amber-400/50 group-hover/handle:bg-amber-400 group-hover:opacity-100 opacity-0 transition-all shadow-md group-hover/handle:scale-y-125" />
+              </div>
 
               {/* Right Resize Handle */}
               <div
                 data-handle="right"
                 onMouseDown={(e) => handleResizeStart(e, 'right')}
-                className="absolute top-0 right-0 translate-x-1/2 w-3 h-full cursor-col-resize hover:bg-green-500/40 active:bg-green-500/60 group/handle rounded-r-lg transition-colors"
-                title="Drag to resize width"
-              />
+                className="absolute top-0 right-0 translate-x-1/2 w-6 h-full cursor-col-resize z-20 flex items-center justify-center group/handle"
+                title="Drag edge to resize box width & font size"
+              >
+                <div className="w-1 h-12 rounded-full bg-amber-400/50 group-hover/handle:bg-amber-400 group-hover:opacity-100 opacity-0 transition-all shadow-md group-hover/handle:scale-y-125" />
+              </div>
 
               {/* Primary Lyrics */}
               <div

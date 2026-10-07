@@ -1,14 +1,11 @@
 import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/context/AuthContext";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import AdminPage from "@/pages/admin";
 import DisplayPage from "@/pages/display";
-import SetupPage from "@/pages/setup";
-import LoginPage from "@/pages/login";
 
 const queryClient = new QueryClient();
 
@@ -16,11 +13,10 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={() => <Redirect to="/admin" />} />
-      <Route path="/setup" component={SetupPage} />
-      <Route path="/login" component={LoginPage} />
-      <Route path="/admin">
-        {() => <ProtectedRoute component={AdminPage} />}
-      </Route>
+      <Route path="/setup" component={() => <Redirect to="/admin" />} />
+      <Route path="/login" component={() => <Redirect to="/admin" />} />
+      <Route path="/songs" component={() => <Redirect to="/admin" />} />
+      <Route path="/admin" component={AdminPage} />
       <Route path="/display" component={DisplayPage} />
       <Route component={NotFound} />
     </Switch>

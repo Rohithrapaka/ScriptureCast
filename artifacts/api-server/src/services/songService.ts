@@ -5,7 +5,9 @@
  * with seamless in-memory fallback when PostgreSQL (DATABASE_URL) is not configured.
  */
 
+import { randomUUID } from "node:crypto";
 import { eq, asc } from "drizzle-orm";
+import { logger } from "../lib/logger";
 import {
   getDb,
   songsTable,
@@ -97,7 +99,11 @@ let inMemorySections: SongSection[] = [
 ];
 
 function genId(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+  return randomUUID();
+}
+
+function isDatabaseNotConfigured(err: unknown): boolean {
+  return err instanceof Error && err.message.includes("DATABASE_URL is not configured");
 }
 
 export interface SongWithSections extends Song {
@@ -223,29 +229,34 @@ export async function createSong(input: CreateSongInput): Promise<SongWithSectio
 
   try {
     const db = getDb();
-    const [created] = await db.insert(songsTable).values(newSong).returning();
-    const createdSections: SongSection[] = [];
+    return await db.transaction(async (tx) => {
+      const [created] = await tx.insert(songsTable).values(newSong).returning();
+      const createdSections: SongSection[] = [];
 
-    if (input.sections && input.sections.length > 0) {
-      for (let i = 0; i < input.sections.length; i++) {
-        const secInput = input.sections[i];
-        const sec: InsertSongSection = {
-          songId: created.id,
-          type: secInput.type,
-          sectionNumber: secInput.sectionNumber || 1,
-          label: secInput.label,
-          hotkey: secInput.hotkey || null,
-          lyricsPrimary: secInput.lyricsPrimary,
-          lyricsSecondary: secInput.lyricsSecondary || null,
-          orderIndex: i,
-        };
-        const [savedSec] = await db.insert(songSectionsTable).values(sec).returning();
-        createdSections.push(savedSec);
+      if (input.sections && input.sections.length > 0) {
+        for (let i = 0; i < input.sections.length; i++) {
+          const secInput = input.sections[i];
+          const sec: InsertSongSection = {
+            songId: created.id,
+            type: secInput.type,
+            sectionNumber: secInput.sectionNumber || 1,
+            label: secInput.label,
+            hotkey: secInput.hotkey || null,
+            lyricsPrimary: secInput.lyricsPrimary,
+            lyricsSecondary: secInput.lyricsSecondary || null,
+            orderIndex: i,
+          };
+          const [savedSec] = await tx.insert(songSectionsTable).values(sec).returning();
+          createdSections.push(savedSec);
+        }
       }
-    }
 
-    return { ...created, sections: createdSections };
-  } catch (_err) {
+      return { ...created, sections: createdSections };
+    });
+  } catch (err) {
+    logger.error({ err }, "Failed to create song in database");
+    if (!isDatabaseNotConfigured(err)) throw err;
+
     inMemorySongs.push(newSong);
     const createdSections: SongSection[] = [];
 

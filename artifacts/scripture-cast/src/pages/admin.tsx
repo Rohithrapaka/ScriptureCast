@@ -27,17 +27,18 @@ export default function AdminPage() {
 
     usePresentationStore.persist.rehydrate();
 
+    // Push current style settings to the server without killing live state.
+    // We intentionally do NOT force active:false/cleared:true here — that
+    // would cut off any in-progress live presentation when the admin page
+    // opens or refreshes.
     setTimeout(() => {
       const s = usePresentationStore.getState();
       updateState({
         data: {
-          active: false,
-          cleared: true,
-          verse: null,
           typography: s.typography,
           background: s.background,
           transition: s.transition,
-        },
+        } as any,
       });
     }, 100);
   // eslint-disable-next-line react-hooks/exhaustive-deps

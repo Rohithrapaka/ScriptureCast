@@ -35,6 +35,22 @@ export function LyricPropertyInspector() {
   } = useLyricsStudioStore();
   const presStore = usePresentationStore();
 
+  // Sync inspector sliders if /display tab or socket updates lyric position/styling
+  React.useEffect(() => {
+    if (presStore.lyric && presStore.active && !presStore.cleared) {
+      const l = presStore.lyric;
+      updateActiveSlideConfig({
+        ...(l.x !== undefined ? { x: l.x } : {}),
+        ...(l.y !== undefined ? { y: l.y } : {}),
+        ...(l.width !== undefined ? { width: l.width } : {}),
+        ...(l.fontSize !== undefined ? { fontSize: l.fontSize } : {}),
+        ...(l.fontFamily !== undefined ? { fontFamily: l.fontFamily } : {}),
+        ...(l.textColor !== undefined ? { textColor: l.textColor } : {}),
+        ...(l.textAlign !== undefined ? { textAlign: l.textAlign } : {}),
+      });
+    }
+  }, [presStore.lyric, presStore.active, presStore.cleared, updateActiveSlideConfig]);
+
   const handleConfigChange = (patch: Partial<typeof activeSlideConfig>) => {
     updateActiveSlideConfig(patch);
     if (presStore.active && !presStore.cleared) {
@@ -63,6 +79,7 @@ export function LyricPropertyInspector() {
       }
     }
   };
+
 
   return (
     <div className="flex flex-col h-full bg-neutral-900 border-l border-neutral-800 p-4 space-y-6 overflow-y-auto select-none">
